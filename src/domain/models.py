@@ -41,8 +41,11 @@ class Message(BaseModel):
 
     @field_validator("content")
     @classmethod
-    def content_not_empty(cls, v: str) -> str:
-        """Ensure message content is not empty."""
+    def content_not_empty(cls, v: str, info) -> str:
+        """Ensure message content is not empty (unless there are tool_calls)."""
+        # Allow empty content if there are tool_calls
+        if hasattr(info, 'data') and info.data.get('tool_calls'):
+            return v or ""
         if not v or not v.strip():
             raise ValueError("Message content cannot be empty")
         return v

@@ -123,7 +123,7 @@ class OpenAIProvider(ILLMProvider):
             
             return Message(
                 role=MessageRole.ASSISTANT,
-                content=assistant_message.content or "",
+                content=assistant_message.content or "[Tool call]",  # Placeholder when calling tools
                 tool_calls=tool_calls,
                 metadata={
                     "model": model,

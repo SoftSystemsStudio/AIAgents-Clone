@@ -107,7 +107,7 @@ When user asks to clean inbox:
 
 Be helpful, cautious with deletions, and explain what you're doing.""",
         model_provider="openai",
-        model_name="gpt-4o",
+        model_name="gpt-4o-mini",  # Fast, cost-effective model for email management
         temperature=0.3,
         max_tokens=2000,
         capabilities=[AgentCapability.CODE_EXECUTION],
