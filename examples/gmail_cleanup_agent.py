@@ -16,7 +16,18 @@ Setup:
 """
 
 import asyncio
+import os
 from uuid import uuid4
+from pathlib import Path
+
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    env_path = Path(__file__).parent.parent / '.env'
+    load_dotenv(env_path)
+except ImportError:
+    print("⚠️  Warning: python-dotenv not installed. Install with: pip install python-dotenv")
+    print("    Or manually export OPENAI_API_KEY environment variable")
 
 from src.config import get_config
 from src.domain.models import Agent, AgentCapability
@@ -41,19 +52,27 @@ async def create_gmail_cleanup_agent(
     """
     config = get_config()
     
-    if not config.llm.openai_api_key:
-        raise ValueError("OPENAI_API_KEY not set in .env file")
+    # Debug: Check if API key is loaded
+    api_key = config.llm.openai_api_key or os.getenv('OPENAI_API_KEY')
+    if not api_key:
+        raise ValueError(
+            "OPENAI_API_KEY not set!\n"
+            "Please set it in .env file or export as environment variable:\n"
+            "  export OPENAI_API_KEY='your-key-here'"
+        )
+    
+    print(f"✅ OpenAI API key loaded: {api_key[:20]}...")
     
     # Initialize components
     observability = StructuredLogger(log_level="INFO")
-    llm_provider = OpenAIProvider(api_key=config.llm.openai_api_key)
+    llm_provider = OpenAIProvider(api_key=api_key)
     agent_repo = InMemoryAgentRepository()
     tool_registry = InMemoryToolRegistry()
     
     # Register Gmail tools
     gmail_tools = create_gmail_tools(credentials_path)
     for tool in gmail_tools:
-        await tool_registry.register(tool)
+        tool_registry.register_tool(tool)
     
     # Create agent
     agent = Agent(
@@ -162,16 +181,25 @@ async def interactive_cleanup():
             print("\n🤖 Agent working...\n")
             
             # Execute agent
-            result = await orchestrator.execute_agent(
-                agent=agent,
-                user_input=user_input,
-            )
-            
-            if result.success:
-                print(f"🤖 Assistant: {result.output}\n")
-                print(f"⏱️  {result.duration_seconds:.1f}s | {result.total_tokens} tokens | ${result.estimated_cost:.4f}")
-            else:
-                print(f"❌ Error: {result.error}")
+            try:
+                result = await orchestrator.execute_agent(
+                    agent=agent,
+                    user_input=user_input,
+                )
+                
+                if result.success:
+                    print(f"🤖 Assistant: {result.output}\n")
+                    print(f"⏱️  {result.duration_seconds:.1f}s | {result.total_tokens} tokens | ${result.estimated_cost:.4f}")
+                else:
+                    print(f"❌ Error: {result.error}")
+                    if result.metadata:
+                        print(f"   Details: {result.metadata}")
+            except Exception as e:
+                print(f"❌ Error executing agent: {type(e).__name__}: {str(e)}")
+                # Print the full traceback for debugging
+                import traceback
+                print("\nFull error traceback:")
+                traceback.print_exc()
     
     except FileNotFoundError as e:
         print(f"\n❌ {str(e)}")

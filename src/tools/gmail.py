@@ -37,6 +37,16 @@ SCOPES = [
     'https://www.googleapis.com/auth/gmail.readonly',
 ]
 
+# Global client instance (initialized when tools are created)
+_gmail_client: Optional['GmailClient'] = None
+
+
+def get_gmail_client() -> 'GmailClient':
+    """Get the global Gmail client instance."""
+    if _gmail_client is None:
+        raise RuntimeError("Gmail client not initialized. Call create_gmail_tools() first.")
+    return _gmail_client
+
 
 class GmailClient:
     """
@@ -86,7 +96,28 @@ class GmailClient:
                 flow = InstalledAppFlow.from_client_secrets_file(
                     self.credentials_path, SCOPES
                 )
-                creds = flow.run_local_server(port=0)
+                
+                # Use out-of-band (OOB) flow for cloud environments
+                flow.redirect_uri = 'urn:ietf:wg:oauth:2.0:oob'
+                
+                print("\n🔐 Gmail Authentication Required")
+                print("=" * 60)
+                print("STEP 1: Copy the URL below and open it in your browser")
+                print("STEP 2: Sign in and grant permissions")
+                print("STEP 3: Google will show you an authorization code")
+                print("STEP 4: Copy that code and paste it back here")
+                print("=" * 60)
+                print()
+                
+                # Generate authorization URL with OOB redirect
+                auth_url, _ = flow.authorization_url(prompt='consent')
+                print(f"Authorization URL:\n{auth_url}\n")
+                
+                # Get code from user
+                code = input("Enter the authorization code: ").strip()
+                
+                flow.fetch_token(code=code)
+                creds = flow.credentials
             
             # Save credentials
             with open(self.token_path, 'wb') as token:
@@ -185,6 +216,127 @@ class GmailClient:
             raise Exception(f"Failed to batch delete: {str(e)}")
 
 
+# ============================================================================
+# Tool Handler Functions (module-level for registry)
+# ============================================================================
+
+async def list_emails(query: str = "is:unread", max_results: int = 50) -> str:
+    """List emails matching query."""
+    client = get_gmail_client()
+    messages = client.list_messages(query=query, max_results=max_results)
+    
+    if not messages:
+        return f"No emails found matching query: {query}"
+    
+    # Get details for each message
+    email_summaries = []
+    for msg in messages[:20]:  # Show first 20 in detail
+        try:
+            details = client.get_message(msg['id'])
+            headers = {h['name']: h['value'] for h in details['payload']['headers']}
+            
+            email_summaries.append({
+                'id': msg['id'],
+                'from': headers.get('From', 'Unknown'),
+                'subject': headers.get('Subject', 'No subject'),
+                'date': headers.get('Date', 'Unknown'),
+                'snippet': details.get('snippet', '')[:100],
+            })
+        except Exception as e:
+            email_summaries.append({
+                'id': msg['id'],
+                'error': str(e),
+            })
+    
+    # Format response
+    response = f"Found {len(messages)} emails matching '{query}':\n\n"
+    for idx, email in enumerate(email_summaries, 1):
+        if 'error' in email:
+            response += f"{idx}. ID: {email['id']} (Error: {email['error']})\n"
+        else:
+            response += f"{idx}. From: {email['from']}\n"
+            response += f"   Subject: {email['subject']}\n"
+            response += f"   Date: {email['date']}\n"
+            response += f"   Snippet: {email['snippet']}...\n"
+            response += f"   ID: {email['id']}\n\n"
+    
+    if len(messages) > 20:
+        response += f"\n... and {len(messages) - 20} more emails."
+    
+    return response
+
+
+async def delete_emails_by_sender(sender: str, max_delete: int = 100) -> str:
+    """Delete all emails from a specific sender."""
+    client = get_gmail_client()
+    query = f"from:{sender}"
+    messages = client.list_messages(query=query, max_results=max_delete)
+    
+    if not messages:
+        return f"No emails found from sender: {sender}"
+    
+    count = len(messages)
+    message_ids = [msg['id'] for msg in messages]
+    client.batch_delete(message_ids)
+    
+    return f"Successfully deleted {count} emails from {sender}"
+
+
+async def delete_old_emails(days: int = 30, max_delete: int = 200) -> str:
+    """Delete emails older than specified days."""
+    client = get_gmail_client()
+    query = f"older_than:{days}d"
+    messages = client.list_messages(query=query, max_results=max_delete)
+    
+    if not messages:
+        return f"No emails found older than {days} days"
+    
+    count = len(messages)
+    message_ids = [msg['id'] for msg in messages]
+    client.batch_delete(message_ids)
+    
+    return f"Successfully deleted {count} emails older than {days} days"
+
+
+async def archive_emails_by_sender(sender: str, max_archive: int = 100) -> str:
+    """Archive (remove from inbox) emails from a sender."""
+    client = get_gmail_client()
+    query = f"from:{sender}"
+    messages = client.list_messages(query=query, max_results=max_archive)
+    
+    if not messages:
+        return f"No emails found from sender: {sender}"
+    
+    count = len(messages)
+    for msg in messages:
+        client.modify_message(msg['id'], remove_labels=['INBOX'])
+    
+    return f"Successfully archived {count} emails from {sender}"
+
+
+async def search_and_delete(search_term: str, confirm: bool, max_delete: int = 50) -> str:
+    """Search for emails and delete them (requires confirmation)."""
+    if not confirm:
+        return "Error: Must set confirm=True to delete emails (safety check)"
+    
+    client = get_gmail_client()
+    query = f"subject:({search_term}) OR {search_term}"
+    messages = client.list_messages(query=query, max_results=max_delete)
+    
+    if not messages:
+        return f"No emails found matching '{search_term}'"
+    
+    count = len(messages)
+    message_ids = [msg['id'] for msg in messages]
+    client.batch_delete(message_ids)
+    
+    return f"Successfully deleted {count} emails matching '{search_term}'"
+
+
+# ============================================================================
+# Tool Factory
+# ============================================================================
+
 def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]:
     """
     Create Gmail management tools.
@@ -195,7 +347,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
     Returns:
         List of Gmail tools
     """
-    client = GmailClient(credentials_path)
+    global _gmail_client
+    _gmail_client = GmailClient(credentials_path)
     
     async def list_emails(
         query: str = "is:unread",
@@ -366,7 +519,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         Tool(
             name="list_emails",
             description="List emails in Gmail inbox. Can filter by query (is:unread, from:sender, older_than:Xd, etc.)",
-            function=list_emails,
+            handler_module="src.tools.gmail",
+            handler_function="list_emails",
             parameters=[
                 ToolParameter(
                     name="query",
@@ -385,7 +539,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         Tool(
             name="delete_emails_by_sender",
             description="Delete all emails from a specific sender or domain",
-            function=delete_emails_by_sender,
+            handler_module="src.tools.gmail",
+            handler_function="delete_emails_by_sender",
             parameters=[
                 ToolParameter(
                     name="sender",
@@ -404,7 +559,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         Tool(
             name="delete_old_emails",
             description="Delete emails older than specified number of days",
-            function=delete_old_emails,
+            handler_module="src.tools.gmail",
+            handler_function="delete_old_emails",
             parameters=[
                 ToolParameter(
                     name="days",
@@ -423,7 +579,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         Tool(
             name="archive_emails_by_sender",
             description="Archive (remove from inbox without deleting) emails from a sender",
-            function=archive_emails_by_sender,
+            handler_module="src.tools.gmail",
+            handler_function="archive_emails_by_sender",
             parameters=[
                 ToolParameter(
                     name="sender",
@@ -442,7 +599,8 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         Tool(
             name="search_and_delete",
             description="Search for emails by subject/content and delete them (requires confirmation)",
-            function=search_and_delete,
+            handler_module="src.tools.gmail",
+            handler_function="search_and_delete",
             parameters=[
                 ToolParameter(
                     name="search_term",
