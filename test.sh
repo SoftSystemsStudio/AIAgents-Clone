@@ -21,6 +21,8 @@ if [ -z "$1" ]; then
     echo "  multi           - Multi-agent coordination"
     echo "  streaming       - Streaming token delivery"
     echo "  database        - PostgreSQL persistence"
+    echo "  templates       - Pre-built agent templates"
+    echo "  ratelimit       - Rate limiting and cost control"
     echo ""
     echo "Example: ./test.sh simple"
     exit 0
@@ -44,6 +46,12 @@ case "$1" in
         ;;
     database)
         python examples/database_persistence.py
+        ;;
+    templates)
+        python examples/agent_templates.py
+        ;;
+    ratelimit)
+        python examples/rate_limiting.py
         ;;
     *)
         echo "❌ Unknown example: $1"

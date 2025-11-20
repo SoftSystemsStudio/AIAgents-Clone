@@ -180,6 +180,60 @@ python examples/database_persistence.py
 
 ---
 
+### 8. Agent Templates (`agent_templates.py`)
+**Difficulty**: Beginner
+**Dependencies**: OpenAI API key only
+
+Pre-built specialized agents for common use cases.
+
+```bash
+python examples/agent_templates.py
+```
+
+**What you'll learn**:
+- Using pre-configured agent templates
+- Quick agent creation without prompt engineering
+- Specialized agent configurations
+- Template customization
+
+**Available templates**:
+- Code Reviewer - Reviews code quality
+- SQL Generator - Converts English to SQL
+- Documentation Writer - Generates docs
+- Data Analyst - Analyzes data
+- Research Assistant - Researches topics
+- Customer Support - Empathetic support
+- Content Creator - Marketing content
+- System Architect - Designs architectures
+
+---
+
+### 9. Rate Limiting (`rate_limiting.py`)
+**Difficulty**: Intermediate
+**Dependencies**: OpenAI API key only
+
+Cost control and usage quotas to prevent runaway expenses.
+
+```bash
+python examples/rate_limiting.py
+```
+
+**What you'll learn**:
+- Request and token limits
+- Cost caps per time window
+- Per-user quotas
+- Emergency stop functionality
+- Usage monitoring
+
+**Features**:
+- Multi-window rate limiting (minute/hour/day)
+- Token and cost budgets
+- Burst allowance
+- Real-time usage tracking
+- Emergency kill switch
+
+---
+
 ## Example Output
 
 Each example provides detailed output including:
