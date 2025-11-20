@@ -49,6 +49,11 @@ openai = [
 anthropic = [
     "anthropic>=0.7.0",
 ]
+gmail = [
+    "google-auth-oauthlib>=1.2.0",
+    "google-auth-httplib2>=0.2.0",
+    "google-api-python-client>=2.100.0",
+]
 vectordb = [
     "qdrant-client>=1.7.0",
     "chromadb>=0.4.18",

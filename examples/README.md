@@ -234,6 +234,76 @@ python examples/rate_limiting.py
 
 ---
 
+### 10. Memory Agent (`memory_agent.py`)
+**Difficulty**: Intermediate
+**Dependencies**: OpenAI API key, PostgreSQL
+
+Agents with conversation memory and context retention across sessions.
+
+```bash
+# Start PostgreSQL
+docker-compose up -d postgres
+
+python examples/memory_agent.py
+```
+
+**What you'll learn**:
+- Conversation memory with session management
+- Context retention across multiple turns
+- Importance scoring for memory prioritization
+- Semantic search over conversation history
+- Session-based memory isolation
+
+**Features**:
+- Automatic context storage
+- Smart memory retrieval based on relevance
+- Importance weighting (critical info vs casual chat)
+- Session history management
+- Memory search with similarity scoring
+
+---
+
+### 11. Gmail Cleanup Agent (`gmail_cleanup_agent.py`)
+**Difficulty**: Intermediate
+**Dependencies**: OpenAI API key, Gmail API OAuth credentials
+
+AI assistant that manages your Gmail inbox using natural language commands.
+
+```bash
+# Install Gmail dependencies
+pip install -e ".[gmail]"
+
+# Set up OAuth credentials (one-time)
+# See docs/GMAIL_SETUP.md for detailed instructions
+
+# Run interactive cleanup assistant
+python examples/gmail_cleanup_agent.py
+```
+
+**What you'll learn**:
+- OAuth2 authentication with Google APIs
+- Gmail API integration for email management
+- Safe bulk operations with confirmation prompts
+- Natural language email management
+- Production-ready tool safety patterns
+
+**Example commands**:
+- "Show me my unread emails"
+- "Delete all emails from notifications@linkedin.com"
+- "Archive promotional emails older than 90 days"
+- "Clean up emails from the last year"
+
+**Safety features**:
+- Confirmation required for bulk deletions
+- Batch limits (100-200 emails max per operation)
+- List-first approach (always shows what will be affected)
+- Archive option (safer than permanent deletion)
+- Trash support (30-day recovery window)
+
+📖 **[Complete Gmail Setup Guide](../docs/GMAIL_SETUP.md)**
+
+---
+
 ## Example Output
 
 Each example provides detailed output including:

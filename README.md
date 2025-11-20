@@ -84,52 +84,39 @@ cp .env.example .env
 make docker-up
 ```
 
-### Your First Agent
+### Simple Agent Example
 
 ```python
-from src.domain.models import Agent, AgentCapability
-from src.infrastructure.llm_providers import OpenAIProvider
-from src.infrastructure.repositories import InMemoryAgentRepository, InMemoryToolRegistry
-from src.infrastructure.observability import StructuredLogger
-from src.application.orchestrator import AgentOrchestrator
-from src.application.use_cases import CreateAgentUseCase, ExecuteAgentUseCase
+from examples.simple_agent import create_simple_agent
+import asyncio
 
-# Initialize infrastructure
-llm_provider = OpenAIProvider(api_key="your-api-key")
-agent_repo = InMemoryAgentRepository()
-tool_registry = InMemoryToolRegistry()
-observability = StructuredLogger(log_level="INFO")
+async def main():
+    agent = create_simple_agent()
+    result = await agent.run("What are the latest AI trends?")
+    print(result.output)
 
-# Create orchestrator
-orchestrator = AgentOrchestrator(
-    llm_provider=llm_provider,
-    tool_registry=tool_registry,
-    agent_repository=agent_repo,
-    observability=observability,
-)
-
-# Create an agent
-create_agent = CreateAgentUseCase(agent_repo)
-agent = await create_agent.execute(
-    name="research_assistant",
-    description="Helps with research tasks",
-    system_prompt="You are a helpful research assistant. Provide clear, accurate information.",
-    model_provider="openai",
-    model_name="gpt-4",
-    capabilities=[AgentCapability.WEB_SEARCH],
-)
-
-# Execute agent
-execute_agent = ExecuteAgentUseCase(agent_repo, orchestrator)
-result = await execute_agent.execute(
-    agent_id=agent.id,
-    user_input="What are the latest developments in AI agents?",
-)
-
-print(f"Output: {result.output}")
-print(f"Tokens: {result.total_tokens}")
-print(f"Cost: ${result.estimated_cost:.4f}")
+asyncio.run(main())
 ```
+
+### Gmail Cleanup Agent
+
+Automate your inbox management with AI:
+
+```bash
+# Install Gmail dependencies
+pip install -e ".[gmail]"
+
+# Run interactive cleanup assistant
+python examples/gmail_cleanup_agent.py
+```
+
+**Example commands:**
+- "Show me my unread emails"
+- "Delete all emails from notifications@linkedin.com"
+- "Archive promotional emails older than 90 days"
+- "Help me organize my inbox"
+
+📖 **[Complete Gmail Setup Guide](docs/GMAIL_SETUP.md)**
 
 ## 📦 Project Structure
 
