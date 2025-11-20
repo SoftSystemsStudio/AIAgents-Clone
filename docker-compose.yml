@@ -31,6 +31,23 @@ services:
       timeout: 3s
       retries: 3
 
+  # PostgreSQL database
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=aiagents
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   # Jaeger for distributed tracing (optional)
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -55,4 +72,5 @@ services:
 volumes:
   redis_data:
   qdrant_data:
+  postgres_data:
   prometheus_data:

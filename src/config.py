@@ -56,6 +56,41 @@ class RedisConfig(BaseSettings):
     )
 
 
+class DatabaseConfig(BaseSettings):
+    """Configuration for PostgreSQL database."""
+    
+    database_url: Optional[str] = Field(
+        None,
+        description="Full PostgreSQL connection URL (overrides individual fields)"
+    )
+    database_host: str = Field("localhost", description="Database host")
+    database_port: int = Field(5432, description="Database port")
+    database_name: str = Field("aiagents", description="Database name")
+    database_user: str = Field("postgres", description="Database user")
+    database_password: Optional[str] = Field(None, description="Database password")
+    database_pool_size: int = Field(10, description="Connection pool size")
+    database_max_overflow: int = Field(20, description="Max connections above pool size")
+    
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
+    
+    def get_url(self) -> str:
+        """Get database URL (full URL or build from components)."""
+        if self.database_url:
+            return self.database_url
+        
+        password_part = f":{self.database_password}" if self.database_password else ""
+        return (
+            f"postgresql+asyncpg://"
+            f"{self.database_user}{password_part}@"
+            f"{self.database_host}:{self.database_port}/"
+            f"{self.database_name}"
+        )
+
+
 class ObservabilityConfig(BaseSettings):
     """Configuration for observability."""
     
@@ -131,6 +166,7 @@ class AppConfig(BaseSettings):
     llm: LLMProviderConfig = Field(default_factory=LLMProviderConfig)
     vector_store: VectorStoreConfig = Field(default_factory=VectorStoreConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
@@ -183,6 +219,7 @@ def get_config() -> AppConfig:
             llm=LLMProviderConfig(),
             vector_store=VectorStoreConfig(),
             redis=RedisConfig(),
+            database=DatabaseConfig(),
             observability=ObservabilityConfig(),
             agent=AgentConfig(),
             rate_limit=RateLimitConfig(),

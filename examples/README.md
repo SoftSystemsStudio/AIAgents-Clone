@@ -151,6 +151,35 @@ python examples/streaming_client.py --mode demo
 
 ---
 
+### 7. Database Persistence (`database_persistence.py`)
+**Difficulty**: Intermediate  
+**Dependencies**: OpenAI API key, PostgreSQL
+
+Production-ready persistence with conversation history.
+
+```bash
+# Start PostgreSQL
+docker-compose up -d postgres
+
+# Run example
+python examples/database_persistence.py
+```
+
+**What you'll learn**:
+- PostgreSQL repository usage
+- Conversation history persistence
+- Database migrations
+- Connection pooling
+- Production deployment patterns
+
+**Features**:
+- ACID transaction support
+- Efficient indexing
+- Conversation history across restarts
+- Multi-agent shared state
+
+---
+
 ## Example Output
 
 Each example provides detailed output including:
