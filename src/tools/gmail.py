@@ -33,8 +33,12 @@ from src.domain.models import Tool, ToolParameter
 
 # Gmail API scopes
 SCOPES = [
-    'https://www.googleapis.com/auth/gmail.modify',
-    'https://www.googleapis.com/auth/gmail.readonly',
+    'https://www.googleapis.com/auth/gmail.modify',  # Read, compose, send, and modify emails
+    'https://www.googleapis.com/auth/gmail.readonly',  # View emails and settings
+    # Note: gmail.modify does NOT include permission to permanently delete emails
+    # For batch delete to work, you need one of these additional scopes:
+    # - https://mail.google.com/ (full Gmail access)
+    # We'll use trash_message instead of permanent delete for safety
 ]
 
 # Global client instance (initialized when tools are created)
@@ -264,15 +268,18 @@ class GmailClient:
             raise Exception(f"Failed to modify message {message_id}: {str(e)}")
     
     def batch_delete(self, message_ids: List[str]) -> Dict[str, Any]:
-        """Delete multiple messages."""
+        """Move multiple messages to trash (safer than permanent delete)."""
         try:
-            self.service.users().messages().batchDelete(
-                userId='me',
-                body={'ids': message_ids},
-            ).execute()
-            return {"deleted": len(message_ids)}
+            count = 0
+            for msg_id in message_ids:
+                try:
+                    self.trash_message(msg_id)
+                    count += 1
+                except Exception:
+                    pass  # Continue with other messages
+            return {"deleted": count}
         except Exception as e:
-            raise Exception(f"Failed to batch delete: {str(e)}")
+            raise Exception(f"Failed to trash messages: {str(e)}")
 
 
 # ============================================================================
@@ -331,7 +338,7 @@ async def list_emails(query: str = "is:unread", max_results: int = 20) -> str:
 
 
 async def delete_emails_by_sender(sender: str, max_delete: int = 100) -> str:
-    """Delete all emails from a specific sender."""
+    """Delete (move to trash) all emails from a specific sender."""
     client = get_gmail_client()
     query = f"from:{sender}"
     messages = client.list_messages(query=query, max_results=max_delete)
@@ -341,13 +348,13 @@ async def delete_emails_by_sender(sender: str, max_delete: int = 100) -> str:
     
     count = len(messages)
     message_ids = [msg['id'] for msg in messages]
-    client.batch_delete(message_ids)
+    result = client.batch_delete(message_ids)
     
-    return f"Successfully deleted {count} emails from {sender}"
+    return f"Successfully moved {result['deleted']} emails from {sender} to trash"
 
 
 async def delete_old_emails(days: int = 30, max_delete: int = 200) -> str:
-    """Delete emails older than specified days."""
+    """Delete (move to trash) emails older than specified days."""
     client = get_gmail_client()
     query = f"older_than:{days}d"
     messages = client.list_messages(query=query, max_results=max_delete)
@@ -357,9 +364,9 @@ async def delete_old_emails(days: int = 30, max_delete: int = 200) -> str:
     
     count = len(messages)
     message_ids = [msg['id'] for msg in messages]
-    client.batch_delete(message_ids)
+    result = client.batch_delete(message_ids)
     
-    return f"Successfully deleted {count} emails older than {days} days"
+    return f"Successfully moved {result['deleted']} emails older than {days} days to trash"
 
 
 async def archive_emails_by_sender(sender: str, max_archive: int = 100) -> str:
@@ -379,7 +386,7 @@ async def archive_emails_by_sender(sender: str, max_archive: int = 100) -> str:
 
 
 async def search_and_delete(search_term: str, confirm: bool, max_delete: int = 50) -> str:
-    """Search for emails and delete them (requires confirmation)."""
+    """Search for emails and delete them (move to trash)."""
     if not confirm:
         return "Error: Must set confirm=True to delete emails (safety check)"
     
@@ -392,9 +399,9 @@ async def search_and_delete(search_term: str, confirm: bool, max_delete: int = 5
     
     count = len(messages)
     message_ids = [msg['id'] for msg in messages]
-    client.batch_delete(message_ids)
+    result = client.batch_delete(message_ids)
     
-    return f"Successfully deleted {count} emails matching '{search_term}'"
+    return f"Successfully moved {result['deleted']} emails matching '{search_term}' to trash"
 
 
 # ============================================================================
