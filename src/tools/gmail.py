@@ -132,25 +132,44 @@ class GmailClient:
         label_ids: Optional[List[str]] = None,
     ) -> List[Dict[str, Any]]:
         """
-        List messages matching query.
+        List messages matching query with pagination support.
         
         Args:
             query: Gmail search query (e.g., 'is:unread', 'from:example@gmail.com')
-            max_results: Maximum messages to return
+            max_results: Maximum messages to return (will paginate if needed)
             label_ids: Filter by label IDs
             
         Returns:
             List of message metadata
         """
         try:
-            results = self.service.users().messages().list(
-                userId='me',
-                q=query,
-                maxResults=max_results,
-                labelIds=label_ids,
-            ).execute()
+            all_messages = []
+            page_token = None
             
-            return results.get('messages', [])
+            while len(all_messages) < max_results:
+                # Gmail API max is 500 per request
+                page_size = min(500, max_results - len(all_messages))
+                
+                results = self.service.users().messages().list(
+                    userId='me',
+                    q=query,
+                    maxResults=page_size,
+                    labelIds=label_ids,
+                    pageToken=page_token,
+                ).execute()
+                
+                messages = results.get('messages', [])
+                if not messages:
+                    break
+                
+                all_messages.extend(messages)
+                
+                # Check if there are more pages
+                page_token = results.get('nextPageToken')
+                if not page_token:
+                    break
+            
+            return all_messages
         except Exception as e:
             raise Exception(f"Failed to list messages: {str(e)}")
     
