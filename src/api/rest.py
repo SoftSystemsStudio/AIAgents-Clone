@@ -14,7 +14,7 @@ from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel, Field
 
 from src.config import get_config
@@ -23,6 +23,7 @@ from src.domain.exceptions import AgentNotFoundError, AgentExecutionError
 from src.infrastructure.llm_providers import OpenAIProvider
 from src.infrastructure.repositories import InMemoryAgentRepository, InMemoryToolRegistry
 from src.infrastructure.observability import StructuredLogger, PrometheusObservability
+from src.infrastructure.dashboard import get_dashboard_metrics
 from src.application.orchestrator import AgentOrchestrator
 from src.application.use_cases import (
     CreateAgentUseCase,
@@ -492,6 +493,514 @@ async def get_metrics():
         "message": "Metrics available at Prometheus endpoint",
         "endpoint": f"http://localhost:{config.observability.metrics_port}/metrics",
     }
+
+
+@app.get("/api/dashboard/stats", tags=["Dashboard"])
+async def get_dashboard_stats():
+    """
+    Get current dashboard statistics.
+    
+    Returns:
+        System metrics, agent stats, and time series data
+    """
+    dashboard = get_dashboard_metrics()
+    
+    return {
+        "system": dashboard.get_system_metrics(),
+        "agents": dashboard.get_agent_stats(),
+        "top_agents": dashboard.get_top_agents(by="executions", limit=5),
+        "recent_executions": dashboard.get_recent_executions(limit=10),
+    }
+
+
+@app.get("/api/dashboard/timeseries/{metric}", tags=["Dashboard"])
+async def get_time_series(metric: str, limit: int = 50):
+    """
+    Get time series data for a metric.
+    
+    Args:
+        metric: Metric type (tokens, cost, executions, duration)
+        limit: Maximum number of points
+    
+    Returns:
+        Time series data points
+    """
+    dashboard = get_dashboard_metrics()
+    
+    if metric not in ["tokens", "cost", "executions", "duration"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid metric: {metric}. Must be one of: tokens, cost, executions, duration"
+        )
+    
+    return {
+        "metric": metric,
+        "data": dashboard.get_time_series(metric, limit),
+    }
+
+
+@app.get("/dashboard", response_class=HTMLResponse, tags=["Dashboard"])
+async def dashboard():
+    """
+    Real-time dashboard for monitoring agent activity.
+    
+    Shows:
+    - System metrics (total executions, tokens, costs)
+    - Agent performance statistics
+    - Live charts (token usage, costs over time)
+    - Recent execution history
+    """
+    html_content = """
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Agents Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.1em;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .stat-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .stat-label {
+            font-size: 0.9em;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+        
+        .stat-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-change {
+            font-size: 0.9em;
+            color: #51cf66;
+            margin-top: 5px;
+        }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .chart-title {
+            font-size: 1.3em;
+            color: #333;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+        
+        .table-card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        th {
+            background: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #495057;
+            border-bottom: 2px solid #dee2e6;
+        }
+        
+        td {
+            padding: 15px;
+            border-bottom: 1px solid #dee2e6;
+        }
+        
+        tr:hover {
+            background: #f8f9fa;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+        
+        .badge-success {
+            background: #d3f9d8;
+            color: #2b8a3e;
+        }
+        
+        .badge-danger {
+            background: #ffe3e3;
+            color: #c92a2a;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: white;
+            font-size: 1.5em;
+        }
+        
+        .refresh-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            font-size: 0.9em;
+            color: #667eea;
+            font-weight: 600;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <div class="refresh-indicator">
+        <span class="pulse">●</span> Live Updates
+    </div>
+    
+    <div class="container">
+        <header>
+            <h1>🤖 AI Agents Dashboard</h1>
+            <p class="subtitle">Real-time monitoring and analytics</p>
+        </header>
+        
+        <div class="stats-grid" id="statsGrid">
+            <div class="loading">Loading statistics...</div>
+        </div>
+        
+        <div class="charts-grid">
+            <div class="chart-card">
+                <h2 class="chart-title">📊 Token Usage</h2>
+                <canvas id="tokenChart"></canvas>
+            </div>
+            <div class="chart-card">
+                <h2 class="chart-title">💰 Cost Tracking</h2>
+                <canvas id="costChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="table-card">
+            <h2 class="chart-title">🏆 Top Performing Agents</h2>
+            <table id="topAgentsTable">
+                <thead>
+                    <tr>
+                        <th>Agent</th>
+                        <th>Executions</th>
+                        <th>Success Rate</th>
+                        <th>Tokens Used</th>
+                        <th>Total Cost</th>
+                        <th>Avg Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6" style="text-align: center; color: #999;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="table-card">
+            <h2 class="chart-title">📝 Recent Executions</h2>
+            <table id="recentExecutionsTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Agent</th>
+                        <th>Status</th>
+                        <th>Tokens</th>
+                        <th>Cost</th>
+                        <th>Duration</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="6" style="text-align: center; color: #999;">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <script>
+        // Chart configurations
+        let tokenChart, costChart;
+        
+        function initCharts() {
+            const chartConfig = {
+                type: 'line',
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            };
+            
+            tokenChart = new Chart(
+                document.getElementById('tokenChart'),
+                {
+                    ...chartConfig,
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Tokens',
+                            data: [],
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    }
+                }
+            );
+            
+            costChart = new Chart(
+                document.getElementById('costChart'),
+                {
+                    ...chartConfig,
+                    data: {
+                        labels: [],
+                        datasets: [{
+                            label: 'Cost (USD)',
+                            data: [],
+                            borderColor: '#51cf66',
+                            backgroundColor: 'rgba(81, 207, 102, 0.1)',
+                            tension: 0.4,
+                            fill: true
+                        }]
+                    },
+                    options: {
+                        ...chartConfig.options,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '$' + value.toFixed(4);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+        }
+        
+        async function fetchDashboardData() {
+            try {
+                const response = await fetch('/api/dashboard/stats');
+                const data = await response.json();
+                
+                updateStats(data.system);
+                updateTopAgents(data.top_agents);
+                updateRecentExecutions(data.recent_executions);
+                
+                // Fetch time series data
+                const [tokensRes, costRes] = await Promise.all([
+                    fetch('/api/dashboard/timeseries/tokens?limit=30'),
+                    fetch('/api/dashboard/timeseries/cost?limit=30')
+                ]);
+                
+                const tokensData = await tokensRes.json();
+                const costData = await costRes.json();
+                
+                updateChart(tokenChart, tokensData.data);
+                updateChart(costChart, costData.data);
+                
+            } catch (error) {
+                console.error('Failed to fetch dashboard data:', error);
+            }
+        }
+        
+        function updateStats(system) {
+            const statsGrid = document.getElementById('statsGrid');
+            
+            const uptime = formatDuration(system.uptime_seconds);
+            
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-label">Total Executions</div>
+                    <div class="stat-value">${system.total_executions.toLocaleString()}</div>
+                    <div class="stat-change">↑ ${system.executions_last_hour} last hour</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Tokens</div>
+                    <div class="stat-value">${(system.total_tokens / 1000).toFixed(1)}K</div>
+                    <div class="stat-change">↑ ${(system.tokens_last_hour / 1000).toFixed(1)}K last hour</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Total Cost</div>
+                    <div class="stat-value">$${system.total_cost.toFixed(2)}</div>
+                    <div class="stat-change">↑ $${system.cost_last_hour.toFixed(4)} last hour</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Active Agents</div>
+                    <div class="stat-value">${system.active_agents}</div>
+                    <div class="stat-change">${system.total_agents} total agents</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Avg Response Time</div>
+                    <div class="stat-value">${system.avg_response_time.toFixed(1)}s</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">Uptime</div>
+                    <div class="stat-value" style="font-size: 1.8em;">${uptime}</div>
+                </div>
+            `;
+        }
+        
+        function updateTopAgents(agents) {
+            const tbody = document.querySelector('#topAgentsTable tbody');
+            
+            if (agents.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No agents yet</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = agents.map(agent => `
+                <tr>
+                    <td><strong>${agent.name}</strong></td>
+                    <td>${agent.total_executions}</td>
+                    <td><span class="badge ${agent.success_rate >= 90 ? 'badge-success' : 'badge-danger'}">${agent.success_rate.toFixed(1)}%</span></td>
+                    <td>${agent.total_tokens.toLocaleString()}</td>
+                    <td>$${agent.total_cost.toFixed(4)}</td>
+                    <td>${agent.avg_duration.toFixed(2)}s</td>
+                </tr>
+            `).join('');
+        }
+        
+        function updateRecentExecutions(executions) {
+            const tbody = document.querySelector('#recentExecutionsTable tbody');
+            
+            if (executions.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: #999;">No executions yet</td></tr>';
+                return;
+            }
+            
+            tbody.innerHTML = executions.map(exec => {
+                const time = new Date(exec.timestamp).toLocaleTimeString();
+                return `
+                    <tr>
+                        <td>${time}</td>
+                        <td>${exec.agent_name}</td>
+                        <td><span class="badge ${exec.success ? 'badge-success' : 'badge-danger'}">${exec.success ? 'Success' : 'Failed'}</span></td>
+                        <td>${exec.tokens}</td>
+                        <td>$${exec.cost.toFixed(4)}</td>
+                        <td>${exec.duration.toFixed(2)}s</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function updateChart(chart, data) {
+            if (data.length === 0) return;
+            
+            chart.data.labels = data.map(d => new Date(d.timestamp).toLocaleTimeString());
+            chart.data.datasets[0].data = data.map(d => d.value);
+            chart.update('none'); // No animation for smoother updates
+        }
+        
+        function formatDuration(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            
+            if (hours > 0) {
+                return `${hours}h ${minutes}m`;
+            }
+            return `${minutes}m`;
+        }
+        
+        // Initialize
+        initCharts();
+        fetchDashboardData();
+        
+        // Auto-refresh every 5 seconds
+        setInterval(fetchDashboardData, 5000);
+    </script>
+</body>
+</html>
+    """
+    return HTMLResponse(content=html_content)
 
 
 if __name__ == "__main__":

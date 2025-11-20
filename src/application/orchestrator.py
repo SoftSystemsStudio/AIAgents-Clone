@@ -28,6 +28,7 @@ from src.domain.models import (
     Message,
     MessageRole,
 )
+from src.infrastructure.dashboard import get_dashboard_metrics
 
 
 class AgentOrchestrator:
@@ -86,6 +87,10 @@ class AgentOrchestrator:
         prompt_tokens = 0
         completion_tokens = 0
         iteration_count = 0
+        
+        # Mark agent as active in dashboard
+        dashboard = get_dashboard_metrics()
+        dashboard.start_execution(str(agent.id))
 
         try:
             # Update agent status
@@ -158,6 +163,18 @@ class AgentOrchestrator:
                     duration,
                     {"agent_id": str(agent.id)},
                 )
+            
+            # Record to dashboard
+            dashboard = get_dashboard_metrics()
+            dashboard.record_execution(
+                agent_id=str(agent.id),
+                agent_name=agent.name,
+                tokens=total_tokens,
+                cost=estimated_cost,
+                duration=duration,
+                success=True,
+            )
+            dashboard.end_execution(str(agent.id))
 
             return ExecutionResult(
                 agent_id=agent.id,
@@ -178,6 +195,9 @@ class AgentOrchestrator:
             await self.agent_repository.save(agent)
 
             duration = (datetime.utcnow() - start_time).total_seconds()
+            estimated_cost = self._estimate_cost(
+                agent.model_provider, agent.model_name, prompt_tokens, completion_tokens
+            )
 
             if self.observability:
                 self.observability.log(
@@ -185,6 +205,18 @@ class AgentOrchestrator:
                     f"Agent execution failed: {agent.name}",
                     {"agent_id": str(agent.id), "error": str(e)},
                 )
+            
+            # Record failure to dashboard
+            dashboard = get_dashboard_metrics()
+            dashboard.record_execution(
+                agent_id=str(agent.id),
+                agent_name=agent.name,
+                tokens=total_tokens,
+                cost=estimated_cost,
+                duration=duration,
+                success=False,
+            )
+            dashboard.end_execution(str(agent.id))
 
             return ExecutionResult(
                 agent_id=agent.id,
