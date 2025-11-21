@@ -69,6 +69,25 @@ services:
       - '--config.file=/etc/prometheus/prometheus.yml'
       - '--storage.tsdb.path=/prometheus'
 
+  # Gmail Cleanup Scheduler (runs daily at 2 AM)
+  gmail-cleanup-scheduler:
+    image: alpine:latest
+    volumes:
+      - ./scripts:/scripts
+      - ./src:/src
+      - ./credentials.json:/credentials.json:ro
+      - ./token.pickle:/token.pickle
+    command: >
+      sh -c "
+        apk add --no-cache python3 py3-pip &&
+        pip3 install --no-cache-dir google-auth-oauthlib google-api-python-client pydantic fastapi &&
+        echo '0 2 * * * cd / && python3 /scripts/run_gmail_cleanup.py --user-id=default --quick' | crontab - &&
+        crond -f
+      "
+    restart: unless-stopped
+    depends_on:
+      - postgres
+
 volumes:
   redis_data:
   qdrant_data:

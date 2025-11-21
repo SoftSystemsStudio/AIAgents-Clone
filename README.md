@@ -103,20 +103,32 @@ asyncio.run(main())
 Automate your inbox management with AI:
 
 ```bash
-# Install Gmail dependencies
-pip install -e ".[gmail]"
-
-# Run interactive cleanup assistant
+# Interactive agent (example)
 python examples/gmail_cleanup_agent.py
+
+# CLI for scheduled runs (production)
+python scripts/run_gmail_cleanup.py --user-id=default --quick
+
+# Or use Makefile commands
+make gmail-analyze   # Analyze inbox
+make gmail-preview   # Preview cleanup
+make gmail-cleanup   # Execute cleanup
+
+# API endpoints (RESTful)
+curl -X POST http://localhost:8000/gmail/cleanup/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"user_id": "user123", "max_threads": 100}'
 ```
 
-**Example commands:**
-- "Show me my unread emails"
-- "Delete all emails from notifications@linkedin.com"
-- "Archive promotional emails older than 90 days"
-- "Help me organize my inbox"
+**Features:**
+- ✅ Analyze inbox and get health score
+- ✅ Preview cleanup actions before executing  
+- ✅ Archive old promotional/social emails
+- ✅ Delete emails by sender or keyword
+- ✅ Full audit trail of all actions
+- ✅ RESTful API + CLI + Scheduler support
 
-📖 **[Complete Gmail Setup Guide](docs/GMAIL_SETUP.md)**
+📖 **[Gmail Setup Guide](docs/GMAIL_SETUP.md)** | **[Architecture Details](docs/GMAIL_CLEANUP_ARCHITECTURE.md)**
 
 ## 📦 Project Structure
 

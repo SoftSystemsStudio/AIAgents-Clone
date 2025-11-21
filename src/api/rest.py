@@ -33,6 +33,9 @@ from src.application.use_cases import (
     DeleteAgentUseCase,
 )
 
+# Import Gmail cleanup router
+from src.api.routers.gmail_cleanup import router as gmail_cleanup_router
+
 
 # Global dependencies (initialized in lifespan)
 _dependencies = {}
@@ -111,6 +114,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include routers
+app.include_router(gmail_cleanup_router)
 
 
 # Request/Response Models

@@ -1,4 +1,4 @@
-.PHONY: help install install-dev test test-unit test-integration lint format type-check clean run-dev docker-build docker-up docker-down
+.PHONY: help install install-dev test test-unit test-integration lint format type-check clean run-dev docker-build docker-up docker-down gmail-analyze gmail-preview gmail-cleanup
 
 help:
 	@echo "Available commands:"
@@ -12,6 +12,11 @@ help:
 	@echo "  make type-check       - Run type checking (mypy)"
 	@echo "  make clean            - Clean build artifacts"
 	@echo "  make run-dev          - Run in development mode"
+	@echo ""
+	@echo "Gmail Cleanup commands:"
+	@echo "  make gmail-analyze    - Analyze Gmail inbox"
+	@echo "  make gmail-preview    - Preview cleanup actions"
+	@echo "  make gmail-cleanup    - Execute cleanup"
 
 install:
 	pip install -e .
@@ -59,3 +64,13 @@ docker-up:
 
 docker-down:
 	docker-compose down
+
+# Gmail Cleanup commands
+gmail-analyze:
+	python scripts/run_gmail_cleanup.py --user-id=default --analyze-only --verbose
+
+gmail-preview:
+	python scripts/run_gmail_cleanup.py --user-id=default --dry-run --verbose
+
+gmail-cleanup:
+	python scripts/run_gmail_cleanup.py --user-id=default --quick --verbose
