@@ -4,12 +4,21 @@ Persistence Layer for Gmail Cleanup - Database storage.
 Stores cleanup policies, runs, and audit trails.
 """
 
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
 import json
+import asyncio
+import uuid
 
-from src.domain.cleanup_policy import CleanupPolicy
-from src.domain.metrics import CleanupRun
+try:
+    import asyncpg
+    ASYNCPG_AVAILABLE = True
+except ImportError:
+    ASYNCPG_AVAILABLE = False
+    asyncpg = None  # type: ignore
+
+from src.domain.cleanup_policy import CleanupPolicy, CleanupRule, RetentionPolicy
+from src.domain.metrics import CleanupRun, CleanupStatus, CleanupAction as MetricAction, ActionStatus
 
 
 class GmailCleanupRepository:
@@ -127,12 +136,12 @@ class InMemoryGmailCleanupRepository(GmailCleanupRepository):
 
 class PostgresGmailCleanupRepository(GmailCleanupRepository):
     """
-    PostgreSQL implementation.
+    PostgreSQL implementation with asyncpg.
     
     Schema:
-    - gmail_cleanup_policies: Stores cleanup policies
-    - gmail_cleanup_runs: Stores cleanup run metadata
-    - gmail_cleanup_actions: Stores individual actions (audit trail)
+    - cleanup_policies: Stores cleanup policies
+    - cleanup_runs: Stores cleanup run metadata
+    - cleanup_actions: Stores individual actions (audit trail)
     """
     
     def __init__(self, connection_string: str):
@@ -142,15 +151,113 @@ class PostgresGmailCleanupRepository(GmailCleanupRepository):
         Args:
             connection_string: PostgreSQL connection string
         """
+        if not ASYNCPG_AVAILABLE:
+            raise RuntimeError("asyncpg not installed. Install with: pip install asyncpg")
+        
         self.connection_string = connection_string
-        # TODO: Initialize connection pool
+        self._pool: Optional[Any] = None  # asyncpg.Pool when available
+        self._pool_lock = asyncio.Lock()
+    
+    async def _get_pool(self) -> Any:  # Returns asyncpg.Pool
+        """Get or create connection pool."""
+        if self._pool is None:
+            async with self._pool_lock:
+                if self._pool is None:
+                    self._pool = await asyncpg.create_pool(
+                        self.connection_string,
+                        min_size=2,
+                        max_size=10,
+                        command_timeout=60,
+                    )
+        return self._pool
+    
+    async def close(self) -> None:
+        """Close connection pool."""
+        if self._pool:
+            await self._pool.close()
+            self._pool = None
+    
+    def _policy_to_dict(self, policy: CleanupPolicy) -> Dict[str, Any]:
+        """Convert policy to dict for storage."""
+        return {
+            "id": policy.id,
+            "user_id": policy.user_id,
+            "name": policy.name,
+            "rules": [
+                {
+                    "sender_domain": rule.sender_domain,
+                    "older_than_days": rule.older_than_days,
+                    "category": rule.category.value if rule.category else None,
+                    "action": rule.action.value,
+                }
+                for rule in policy.rules
+            ],
+            "retention": {
+                "keep_starred": policy.retention.keep_starred,
+                "keep_important": policy.retention.keep_important,
+                "keep_unread": policy.retention.keep_unread,
+                "keep_recent_days": policy.retention.keep_recent_days,
+            } if policy.retention else None,
+            "dry_run": policy.dry_run,
+            "created_at": policy.created_at,
+            "updated_at": policy.updated_at,
+        }
+    
+    def _dict_to_policy(self, data: Dict[str, Any]) -> CleanupPolicy:
+        """Convert dict from storage to policy."""
+        from src.domain.email_thread import EmailCategory, CleanupAction as Action
+        
+        rules = []
+        for rule_data in data["rules"]:
+            rules.append(CleanupRule(
+                sender_domain=rule_data.get("sender_domain"),
+                older_than_days=rule_data.get("older_than_days"),
+                category=EmailCategory(rule_data["category"]) if rule_data.get("category") else None,
+                action=Action(rule_data["action"]),
+            ))
+        
+        retention = None
+        if data.get("retention"):
+            retention = RetentionPolicy(**data["retention"])
+        
+        return CleanupPolicy(
+            id=data["id"],
+            user_id=data["user_id"],
+            name=data["name"],
+            rules=rules,
+            retention=retention,
+            dry_run=data.get("dry_run", False),
+            created_at=data["created_at"],
+            updated_at=data.get("updated_at"),
+        )
     
     async def save_policy(self, policy: CleanupPolicy) -> None:
         """Save or update cleanup policy."""
-        # TODO: Implement Postgres save
-        # INSERT INTO gmail_cleanup_policies ...
-        # ON CONFLICT (user_id, policy_id) DO UPDATE
-        raise NotImplementedError("Postgres implementation pending")
+        pool = await self._get_pool()
+        policy_dict = self._policy_to_dict(policy)
+        
+        async with pool.acquire() as conn:
+            await conn.execute("""
+                INSERT INTO cleanup_policies (
+                    id, user_id, name, rules, retention, dry_run, created_at, updated_at
+                )
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                ON CONFLICT (id) DO UPDATE SET
+                    name = EXCLUDED.name,
+                    rules = EXCLUDED.rules,
+                    retention = EXCLUDED.retention,
+                    dry_run = EXCLUDED.dry_run,
+                    updated_at = EXCLUDED.updated_at
+            """,
+                policy_dict["id"],
+                policy_dict["user_id"],
+                policy_dict["name"],
+                json.dumps(policy_dict["rules"]),
+                json.dumps(policy_dict["retention"]) if policy_dict["retention"] else None,
+                policy_dict["dry_run"],
+                policy_dict["created_at"],
+                policy_dict["updated_at"] or datetime.utcnow(),
+            )
     
     async def get_policy(self, user_id: str, policy_id: str) -> Optional[CleanupPolicy]:
         """Retrieve cleanup policy."""

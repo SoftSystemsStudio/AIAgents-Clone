@@ -13,14 +13,27 @@ from typing import Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 from datetime import datetime
+import os
 
 from src.domain.cleanup_policy import CleanupPolicy
 from src.domain.metrics import CleanupRun
 from src.infrastructure.gmail_client import GmailClient
+from src.infrastructure.gmail_persistence import (
+    GmailCleanupRepository,
+    InMemoryGmailCleanupRepository,
+    get_repository,
+)
+from src.infrastructure.gmail_observability import GmailCleanupObservability
+from src.infrastructure.observability import ObservabilityProvider
 from src.application.services.inbox_hygiene_service import InboxHygieneService
 
 
 router = APIRouter(prefix="/gmail/cleanup", tags=["Gmail Cleanup"])
+
+
+# Global instances (initialized on startup)
+_observability: Optional[GmailCleanupObservability] = None
+_repository: Optional[GmailCleanupRepository] = None
 
 
 # ============================================================================
@@ -72,16 +85,56 @@ class CreatePolicyRequest(BaseModel):
 # Dependency Injection
 # ============================================================================
 
+def get_observability() -> GmailCleanupObservability:
+    """Get observability instance (singleton)."""
+    global _observability
+    if _observability is None:
+        obs_provider = ObservabilityProvider(
+            service_name="gmail-cleanup-api",
+            environment=os.getenv("ENVIRONMENT", "production"),
+        )
+        _observability = GmailCleanupObservability(obs_provider)
+    return _observability
+
+
+def get_repository() -> GmailCleanupRepository:
+    """Get repository instance (singleton)."""
+    global _repository
+    if _repository is None:
+        backend = os.getenv("PERSISTENCE_BACKEND", "memory")
+        if backend == "postgres":
+            connection_string = os.getenv(
+                "DATABASE_URL",
+                "postgresql://localhost/gmail_cleanup"
+            )
+            _repository = get_repository(backend="postgres", connection_string=connection_string)
+        else:
+            _repository = InMemoryGmailCleanupRepository()
+    return _repository
+
+
 def get_gmail_client() -> GmailClient:
     """Get Gmail client instance."""
     return GmailClient(credentials_path='credentials.json')
 
 
 def get_inbox_service(
-    gmail_client: GmailClient = Depends(get_gmail_client)
+    gmail_client: GmailClient = Depends(get_gmail_client),
+    repository: GmailCleanupRepository = Depends(get_repository),
+    observability: GmailCleanupObservability = Depends(get_observability),
 ) -> InboxHygieneService:
-    """Get inbox hygiene service."""
-    return InboxHygieneService(gmail_client)
+    """Get inbox hygiene service with full dependencies."""
+    # Get LLM provider (mock for now)
+    from src.infrastructure.llm_providers import LLMProviderInterface
+    from unittest.mock import AsyncMock
+    llm_provider = AsyncMock(spec=LLMProviderInterface)
+    
+    return InboxHygieneService(
+        gmail_client=gmail_client,
+        llm_provider=llm_provider,
+        repository=repository,
+        observability=observability,
+    )
 
 
 # ============================================================================
