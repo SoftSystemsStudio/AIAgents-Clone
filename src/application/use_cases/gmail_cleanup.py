@@ -8,6 +8,7 @@ orchestrating domain entities and infrastructure services.
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 from dataclasses import asdict
+import uuid
 
 from src.domain.email_thread import MailboxSnapshot, EmailThread, EmailMessage
 from src.domain.cleanup_policy import CleanupPolicy, CleanupAction
@@ -221,13 +222,13 @@ class ExecuteCleanupUseCase:
         
         # Create cleanup run
         run = CleanupRun(
-            id=f"run_{user_id}_{int(datetime.utcnow().timestamp())}",
+            id=f"run_{user_id}_{int(datetime.now().timestamp())}_{uuid.uuid4().hex[:6]}",
             user_id=user_id,
             policy_id=policy.id,
             policy_name=policy.name,
-            status=CleanupStatus.IN_PROGRESS,
+            status=CleanupStatus.DRY_RUN if dry_run else CleanupStatus.IN_PROGRESS,
             before_snapshot=before_snapshot,
-            started_at=datetime.utcnow(),
+            started_at=datetime.now(),
         )
         
         # Log cleanup start
@@ -291,7 +292,9 @@ class ExecuteCleanupUseCase:
                 threads_after = self.gmail.list_threads(query='', max_results=max_threads)
                 run.after_snapshot = MailboxSnapshot.from_threads(user_id, threads_after)
             
-            run.status = CleanupStatus.COMPLETED
+            # Keep DRY_RUN status, otherwise mark as COMPLETED
+            if not dry_run:
+                run.status = CleanupStatus.COMPLETED
             
         except Exception as e:
             run.status = CleanupStatus.FAILED

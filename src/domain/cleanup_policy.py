@@ -212,6 +212,12 @@ class CleanupPolicy:
         if not self.enabled:
             return actions
         
+        # SAFETY GUARDRAILS: Never touch starred or important messages
+        if message.is_starred:
+            return actions
+        if "IMPORTANT" in message.labels:
+            return actions
+        
         # Sort rules by priority
         sorted_rules = sorted(self.cleanup_rules, key=lambda r: r.priority)
         
