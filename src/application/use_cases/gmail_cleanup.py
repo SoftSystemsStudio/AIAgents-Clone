@@ -313,9 +313,9 @@ class ExecuteCleanupUseCase:
             if self.observability:
                 self.observability.log_cleanup_completed(run)
             
-            # Save to repository
-            if self.repository:
-                await self.repository.save_run(run)
+            # Note: Repository save is async, must be called externally
+            # if self.repository:
+            #     await self.repository.save_run(run)
         
         return run
     

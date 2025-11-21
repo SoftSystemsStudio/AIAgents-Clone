@@ -130,6 +130,7 @@ asyncio_mode = "auto"
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
+    "smoke: Smoke tests for production readiness",
     "slow: Slow running tests",
 ]
 

@@ -14,6 +14,10 @@ from contextlib import contextmanager
 from src.domain.interfaces import IObservabilityService
 
 
+# Alias for backwards compatibility
+ObservabilityProvider = IObservabilityService
+
+
 class StructuredLogger(IObservabilityService):
     """
     Structured logging implementation using structlog.
