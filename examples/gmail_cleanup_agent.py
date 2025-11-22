@@ -29,17 +29,17 @@ from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / 'src'))
 
-from application.gmail_cleanup_use_cases import (
+from src.application.gmail_cleanup_use_cases import (
     AnalyzeInboxUseCase,
     DryRunCleanupUseCase,
     ExecuteCleanupUseCase,
 )
-from infrastructure.gmail_client import GmailClient
-from infrastructure.gmail_persistence import InMemoryGmailCleanupRepository
-from infrastructure.gmail_observability import GmailCleanupObservability
-from infrastructure.observability import ObservabilityProvider
-from domain.cleanup_policy import CleanupPolicy
-from domain.cleanup_rule_builder import CleanupRuleBuilder
+from src.infrastructure.gmail_client import GmailClient
+from src.infrastructure.gmail_persistence import InMemoryGmailCleanupRepository
+from src.infrastructure.gmail_observability import GmailCleanupObservability
+from src.infrastructure.observability import ObservabilityProvider
+from src.domain.cleanup_policy import CleanupPolicy
+from src.domain.cleanup_rule_builder import CleanupRuleBuilder
 
 
 def demo_basic_usage():
