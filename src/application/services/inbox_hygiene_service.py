@@ -13,12 +13,13 @@ from src.domain.metrics import CleanupRun, CleanupReport
 from src.infrastructure.gmail_client import GmailClient
 from src.infrastructure.gmail_persistence import GmailCleanupRepository
 from src.infrastructure.gmail_observability import GmailCleanupObservability
-from src.application.use_cases.gmail_cleanup import (
-    AnalyzeInboxUseCase,
-    DryRunCleanupUseCase,
-    ExecuteCleanupUseCase,
-    GenerateSummaryReportUseCase,
-)
+# TODO: Create these use cases in src/application/use_cases/gmail_cleanup.py
+# from src.application.use_cases.gmail_cleanup import (
+#     AnalyzeInboxUseCase,
+#     DryRunCleanupUseCase,
+#     ExecuteCleanupUseCase,
+#     GenerateSummaryReportUseCase,
+# )
 
 
 class InboxHygieneService:
@@ -48,10 +49,11 @@ class InboxHygieneService:
         self.observability = observability
         
         # Initialize use cases with optional dependencies
-        self.analyze_use_case = AnalyzeInboxUseCase(gmail_client, observability)
-        self.dry_run_use_case = DryRunCleanupUseCase(gmail_client, observability)
-        self.execute_use_case = ExecuteCleanupUseCase(gmail_client, repository, observability)
-        self.report_use_case = GenerateSummaryReportUseCase()
+        # TODO: Create these use cases in src/application/use_cases/gmail_cleanup.py
+        # self.analyze_use_case = AnalyzeInboxUseCase(gmail_client, observability)
+        # self.dry_run_use_case = DryRunCleanupUseCase(gmail_client, observability)
+        # self.execute_use_case = ExecuteCleanupUseCase(gmail_client, repository, observability)
+        # self.report_use_case = GenerateSummaryReportUseCase()
     
     def analyze_inbox(
         self,

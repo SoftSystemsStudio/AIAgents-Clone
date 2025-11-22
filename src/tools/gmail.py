@@ -291,19 +291,19 @@ async def list_emails(query: str = "is:unread", max_results: int = 20) -> str:
     client = get_gmail_client()
     
     # Get count using Gmail's estimate (fast and accurate)
-    total_count = client.count_messages(query=query)
+    total_count = _gmail_client.count_messages(query=query)
     
     if total_count == 0:
         return f"No emails found matching query: {query}"
     
     # Then get details for display (limited)
-    messages = client.list_messages(query=query, max_results=max_results)
+    messages = _gmail_client.list_messages(query=query, max_results=max_results)
     
     # Get details for each message
     email_summaries = []
     for msg in messages:
         try:
-            details = client.get_message(msg['id'])
+            details = _gmail_client.get_message(msg['id'])
             headers = {h['name']: h['value'] for h in details['payload']['headers']}
             
             email_summaries.append({
@@ -341,14 +341,14 @@ async def delete_emails_by_sender(sender: str, max_delete: int = 500) -> str:
     """Delete (move to trash) all emails from a specific sender."""
     client = get_gmail_client()
     query = f"from:{sender}"
-    messages = client.list_messages(query=query, max_results=max_delete)
+    messages = _gmail_client.list_messages(query=query, max_results=max_delete)
     
     if not messages:
         return f"No emails found from sender: {sender}"
     
     count = len(messages)
     message_ids = [msg['id'] for msg in messages]
-    result = client.batch_delete(message_ids)
+    result = _gmail_client.batch_delete(message_ids)
     
     return f"Successfully moved {result['deleted']} emails from {sender} to trash"
 
@@ -357,14 +357,14 @@ async def delete_old_emails(days: int = 30, max_delete: int = 1000) -> str:
     """Delete (move to trash) emails older than specified days."""
     client = get_gmail_client()
     query = f"older_than:{days}d"
-    messages = client.list_messages(query=query, max_results=max_delete)
+    messages = _gmail_client.list_messages(query=query, max_results=max_delete)
     
     if not messages:
         return f"No emails found older than {days} days"
     
     count = len(messages)
     message_ids = [msg['id'] for msg in messages]
-    result = client.batch_delete(message_ids)
+    result = _gmail_client.batch_delete(message_ids)
     
     return f"Successfully moved {result['deleted']} emails older than {days} days to trash"
 
@@ -373,14 +373,14 @@ async def archive_emails_by_sender(sender: str, max_archive: int = 500) -> str:
     """Archive (remove from inbox) emails from a sender."""
     client = get_gmail_client()
     query = f"from:{sender}"
-    messages = client.list_messages(query=query, max_results=max_archive)
+    messages = _gmail_client.list_messages(query=query, max_results=max_archive)
     
     if not messages:
         return f"No emails found from sender: {sender}"
     
     count = len(messages)
     for msg in messages:
-        client.modify_message(msg['id'], remove_labels=['INBOX'])
+        _gmail_client.modify_message(msg['id'], remove_labels=['INBOX'])
     
     return f"Successfully archived {count} emails from {sender}"
 
@@ -392,14 +392,14 @@ async def search_and_delete(search_term: str, confirm: bool, max_delete: int = 5
     
     client = get_gmail_client()
     query = f"subject:({search_term}) OR {search_term}"
-    messages = client.list_messages(query=query, max_results=max_delete)
+    messages = _gmail_client.list_messages(query=query, max_results=max_delete)
     
     if not messages:
         return f"No emails found matching '{search_term}'"
     
     count = len(messages)
     message_ids = [msg['id'] for msg in messages]
-    result = client.batch_delete(message_ids)
+    result = _gmail_client.batch_delete(message_ids)
     
     return f"Successfully moved {result['deleted']} emails matching '{search_term}' to trash"
 
@@ -436,19 +436,19 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
             Summary of matching emails with total count
         """
         # Get total count using Gmail's estimate
-        total_count = client.count_messages(query=query)
+        total_count = _gmail_client.count_messages(query=query)
         
         if total_count == 0:
             return f"No emails found matching query: {query}"
         
         # Get details for display (limited)
-        messages = client.list_messages(query=query, max_results=max_results)
+        messages = _gmail_client.list_messages(query=query, max_results=max_results)
         
         # Get details for each message
         email_summaries = []
         for msg in messages:
             try:
-                details = client.get_message(msg['id'])
+                details = _gmail_client.get_message(msg['id'])
                 headers = {h['name']: h['value'] for h in details['payload']['headers']}
                 
                 email_summaries.append({
@@ -493,7 +493,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
             Deletion summary
         """
         query = f"from:{sender}"
-        messages = client.list_messages(query=query, max_results=max_delete)
+        messages = _gmail_client.list_messages(query=query, max_results=max_delete)
         
         if not messages:
             return f"No emails found from sender: {sender}"
@@ -503,7 +503,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         
         # Delete in batches
         message_ids = [msg['id'] for msg in messages]
-        client.batch_delete(message_ids)
+        _gmail_client.batch_delete(message_ids)
         
         return f"Successfully deleted {count} emails from {sender}"
     
@@ -519,14 +519,14 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
             Deletion summary
         """
         query = f"older_than:{days}d"
-        messages = client.list_messages(query=query, max_results=max_delete)
+        messages = _gmail_client.list_messages(query=query, max_results=max_delete)
         
         if not messages:
             return f"No emails found older than {days} days"
         
         count = len(messages)
         message_ids = [msg['id'] for msg in messages]
-        client.batch_delete(message_ids)
+        _gmail_client.batch_delete(message_ids)
         
         return f"Successfully deleted {count} emails older than {days} days"
     
@@ -542,7 +542,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
             Archive summary
         """
         query = f"from:{sender} in:inbox"
-        messages = client.list_messages(query=query, max_results=max_archive)
+        messages = _gmail_client.list_messages(query=query, max_results=max_archive)
         
         if not messages:
             return f"No inbox emails found from sender: {sender}"
@@ -551,7 +551,7 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
         count = 0
         for msg in messages:
             try:
-                client.modify_message(msg['id'], remove_labels=['INBOX'])
+                _gmail_client.modify_message(msg['id'], remove_labels=['INBOX'])
                 count += 1
             except Exception as e:
                 pass
@@ -578,14 +578,14 @@ def create_gmail_tools(credentials_path: str = 'credentials.json') -> List[Tool]
             return "Error: Must set confirm=True to delete emails. Search first with list_emails."
         
         query = f"subject:({search_term}) OR {search_term}"
-        messages = client.list_messages(query=query, max_results=max_delete)
+        messages = _gmail_client.list_messages(query=query, max_results=max_delete)
         
         if not messages:
             return f"No emails found matching: {search_term}"
         
         count = len(messages)
         message_ids = [msg['id'] for msg in messages]
-        client.batch_delete(message_ids)
+        _gmail_client.batch_delete(message_ids)
         
         return f"Successfully deleted {count} emails matching '{search_term}'"
     
