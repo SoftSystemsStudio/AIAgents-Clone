@@ -271,13 +271,13 @@ async def main():
         parameters=[
             ToolParameter(
                 name="data",
-                type="object",
+                type="string",
                 description="The data to validate",
                 required=True
             ),
             ToolParameter(
                 name="validation_rules",
-                type="object",
+                type="string",
                 description="Validation rules to apply",
                 required=True
             )
@@ -293,7 +293,7 @@ async def main():
         parameters=[
             ToolParameter(
                 name="data",
-                type="object",
+                type="string",
                 description="The data to transform",
                 required=True
             ),
@@ -321,14 +321,14 @@ async def main():
         parameters=[
             ToolParameter(
                 name="records",
-                type="array",
-                description="List of records to check for duplicates",
+                type="string",
+                description="List of records to check for duplicates (JSON array string format)",
                 required=True
             ),
             ToolParameter(
                 name="key_fields",
-                type="array",
-                description="Fields to use for duplicate detection (e.g., ['email', 'name'])",
+                type="string",
+                description="List of field names to use for duplicate detection as JSON array (e.g., '[\"email\"]', '[\"name\", \"address\"]')",
                 required=True
             )
         ],
@@ -343,13 +343,13 @@ async def main():
         parameters=[
             ToolParameter(
                 name="data",
-                type="object",
-                description="The data to clean",
+                type="string",
+                description="The data object to clean (JSON string format)",
                 required=True
             ),
             ToolParameter(
                 name="cleaning_rules",
-                type="object",
+                type="string",
                 description="Cleaning rules to apply",
                 required=True
             )
@@ -365,7 +365,7 @@ async def main():
         parameters=[
             ToolParameter(
                 name="dataset",
-                type="array",
+                type="string",
                 description="The dataset to analyze",
                 required=True
             )
@@ -476,6 +476,10 @@ Generate a quality report with metrics and recommendations."""
         print(f"📋 Scenario {i}: {scenario['title']}")
         print("=" * 80)
         print()
+        
+        # Add delay to avoid rate limiting
+        if i > 1:
+            await asyncio.sleep(2)
         
         result = await orchestrator.execute_agent(
             agent=agent,

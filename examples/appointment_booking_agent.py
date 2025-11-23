@@ -331,7 +331,7 @@ async def main():
             ),
             ToolParameter(
                 name="preferred_times",
-                type="array",
+                type="string",
                 description="Optional preferred time slots (e.g., ['09:00', '14:00'])",
                 required=False
             )
@@ -411,7 +411,7 @@ async def main():
             ),
             ToolParameter(
                 name="appointment_details",
-                type="object",
+                type="string",
                 description="Appointment details",
                 required=True
             )
@@ -598,6 +598,10 @@ Please check availability and create a booking for her."""
         print(f"📋 Scenario {i}: {scenario['title']}")
         print("=" * 80)
         print()
+        
+        # Add delay to avoid rate limiting
+        if i > 1:
+            await asyncio.sleep(2)
         
         result = await orchestrator.execute_agent(
             agent=agent,
