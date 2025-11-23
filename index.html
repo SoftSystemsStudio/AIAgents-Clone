@@ -52,6 +52,27 @@
 </head>
 <body class="bg-black text-white">
 
+    <!-- Floating Notification for Social Proof -->
+    <div id="demo-notification" class="fixed bottom-24 left-6 bg-gray-900 border border-lime-500/30 rounded-lg p-4 shadow-2xl transform translate-y-32 transition-transform duration-500 z-40 max-w-sm hidden md:block">
+        <div class="flex items-start">
+            <div class="flex-shrink-0">
+                <div class="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-gray-900 font-bold" id="notification-avatar">
+                    JD
+                </div>
+            </div>
+            <div class="ml-3 flex-1">
+                <p class="text-sm font-semibold" id="notification-name">John Doe</p>
+                <p class="text-xs text-gray-400" id="notification-action">just tested the Email Agent</p>
+                <p class="text-xs text-lime-500 mt-1">📍 San Francisco, CA</p>
+            </div>
+            <button onclick="hideNotification()" class="ml-2 text-gray-500 hover:text-gray-300">
+                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+            </button>
+        </div>
+    </div>
+
     <div class="text-center py-2 text-sm" style="background: linear-gradient(to right, #c0ff6b, #a3e048); color: #000000;">
         🚀 Limited Time: Free consultation + 20% off your first automation project! <a href="#pricing" class="underline hover:opacity-80 font-semibold" style="color: #000000;">Book now &rarr;</a>
     </div>
@@ -687,6 +708,82 @@ Please reach out regarding new automation project.</textarea>
                     <div class="bg-gray-900 border border-gray-800 rounded-lg p-4">
                         <div class="text-3xl font-bold text-lime-500">24/7</div>
                         <div class="text-sm text-gray-400 mt-1">Always Available</div>
+                    </div>
+                </div>
+
+                <!-- Social Proof Section -->
+                <div class="mt-12 bg-gray-900 border border-gray-800 rounded-xl p-8">
+                    <h3 class="text-2xl font-bold text-center mb-8">Trusted by Businesses Like Yours</h3>
+                    
+                    <!-- Testimonials -->
+                    <div class="grid md:grid-cols-2 gap-6 mb-8">
+                        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="text-lime-500 text-2xl mr-2">★★★★★</div>
+                            </div>
+                            <p class="text-gray-300 mb-4">"The email automation agent saved us 20+ hours per week. ROI was immediate. Setup took just 3 days!"</p>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-gray-900 font-bold mr-3">SJ</div>
+                                <div>
+                                    <div class="font-semibold">Sarah Johnson</div>
+                                    <div class="text-sm text-gray-400">CEO, TechStart Inc</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                            <div class="flex items-center mb-4">
+                                <div class="text-lime-500 text-2xl mr-2">★★★★★</div>
+                            </div>
+                            <p class="text-gray-300 mb-4">"Customer service chatbot handles 80% of inquiries automatically. Our team can finally focus on complex issues."</p>
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 bg-lime-500 rounded-full flex items-center justify-center text-gray-900 font-bold mr-3">MW</div>
+                                <div>
+                                    <div class="font-semibold">Michael Wong</div>
+                                    <div class="text-sm text-gray-400">Operations Director, RetailCo</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Real-time Activity Feed -->
+                    <div class="bg-gray-800 border border-lime-500/20 rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="font-semibold text-sm">🔴 Live Activity</div>
+                            <div class="text-xs text-gray-500">Updates every 30s</div>
+                        </div>
+                        <div id="activity-feed" class="space-y-2 text-sm">
+                            <!-- Activity items will be inserted here by JavaScript -->
+                        </div>
+                    </div>
+
+                    <!-- Trust Badges -->
+                    <div class="mt-8 flex flex-wrap justify-center items-center gap-6 text-gray-400 text-sm">
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-lime-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            SOC 2 Compliant
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-lime-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd"/>
+                            </svg>
+                            GDPR Ready
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-lime-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            99.9% Uptime
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-5 h-5 text-lime-500 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5z"/>
+                                <path d="M15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z"/>
+                            </svg>
+                            24/7 Support
+                        </div>
                     </div>
                 </div>
 
@@ -1404,6 +1501,118 @@ Please reach out regarding new automation project.</textarea>
 
         // Initialize first scenario
         loadEmailScenario();
+        
+        // Real-time activity feed
+        const activities = [
+            { icon: '📧', text: 'Sarah from NYC tested Email Agent', time: '2m ago' },
+            { icon: '💬', text: 'Michael from LA tested Support Agent', time: '5m ago' },
+            { icon: '📅', text: 'Jennifer from Chicago booked consultation', time: '8m ago', highlight: true },
+            { icon: '📊', text: 'David from Seattle tested Data Agent', time: '12m ago' },
+            { icon: '📧', text: 'Lisa from Boston tested Email Agent', time: '15m ago' },
+            { icon: '💬', text: 'Tom from Miami started free trial', time: '18m ago', highlight: true },
+            { icon: '📅', text: 'Rachel from Austin tested Booking Agent', time: '22m ago' },
+            { icon: '📊', text: 'Kevin from Denver tested Data Agent', time: '25m ago' }
+        ];
+        
+        let activityIndex = 0;
+        
+        function updateActivityFeed() {
+            const feed = document.getElementById('activity-feed');
+            if (!feed) return;
+            
+            // Show 4 activities at a time
+            const currentActivities = [];
+            for (let i = 0; i < 4; i++) {
+                currentActivities.push(activities[(activityIndex + i) % activities.length]);
+            }
+            
+            feed.innerHTML = currentActivities.map(activity => `
+                <div class="flex items-center justify-between py-2 border-b border-gray-700 last:border-0 ${activity.highlight ? 'bg-lime-500/5 px-2 rounded' : ''}">
+                    <div class="flex items-center">
+                        <span class="mr-2">${activity.icon}</span>
+                        <span class="text-gray-300">${activity.text}</span>
+                    </div>
+                    <span class="text-xs text-gray-500">${activity.time}</span>
+                </div>
+            `).join('');
+            
+            activityIndex = (activityIndex + 1) % activities.length;
+        }
+        
+        // Initialize and update activity feed
+        updateActivityFeed();
+        setInterval(updateActivityFeed, 8000); // Rotate every 8 seconds
+        
+        // Floating notification system
+        const notifications = [
+            { name: 'Sarah Chen', initials: 'SC', city: 'New York, NY', action: 'tested the Email Agent' },
+            { name: 'Michael Rodriguez', initials: 'MR', city: 'Los Angeles, CA', action: 'booked a consultation', highlight: true },
+            { name: 'Jennifer Kim', initials: 'JK', city: 'Chicago, IL', action: 'tested the Support Agent' },
+            { name: 'David Thompson', initials: 'DT', city: 'Seattle, WA', action: 'tested the Data Agent' },
+            { name: 'Lisa Wang', initials: 'LW', city: 'Boston, MA', action: 'started a free trial', highlight: true },
+            { name: 'Tom Martinez', initials: 'TM', city: 'Miami, FL', action: 'tested the Booking Agent' },
+            { name: 'Rachel Green', initials: 'RG', city: 'Austin, TX', action: 'tested all 4 agents' },
+            { name: 'Kevin Brown', initials: 'KB', city: 'Denver, CO', action: 'completed 3 demos' }
+        ];
+        
+        let notificationVisible = false;
+        let lastNotificationTime = Date.now();
+        
+        function showDemoNotification() {
+            if (notificationVisible) return;
+            
+            // Random interval between 12-25 seconds
+            const timeSinceLast = Date.now() - lastNotificationTime;
+            if (timeSinceLast < 12000) return;
+            
+            const notification = notifications[Math.floor(Math.random() * notifications.length)];
+            const notificationEl = document.getElementById('demo-notification');
+            
+            if (!notificationEl) return;
+            
+            document.getElementById('notification-avatar').textContent = notification.initials;
+            document.getElementById('notification-name').textContent = notification.name;
+            document.getElementById('notification-action').textContent = notification.action;
+            
+            // Show with animation
+            notificationEl.classList.remove('translate-y-32');
+            notificationVisible = true;
+            lastNotificationTime = Date.now();
+            
+            // Auto-hide after 6 seconds
+            setTimeout(() => {
+                hideNotification();
+            }, 6000);
+        }
+        
+        function hideNotification() {
+            const notificationEl = document.getElementById('demo-notification');
+            if (notificationEl) {
+                notificationEl.classList.add('translate-y-32');
+                notificationVisible = false;
+            }
+        }
+        
+        // Show first notification after 15 seconds, then randomly
+        setTimeout(() => {
+            showDemoNotification();
+            setInterval(() => {
+                if (!notificationVisible && Math.random() > 0.3) {
+                    showDemoNotification();
+                }
+            }, 15000);
+        }, 15000);
+        
+        // Show notification when user completes a demo (social proof)
+        const originalIncrementDemoCounter = incrementDemoCounter;
+        incrementDemoCounter = function() {
+            originalIncrementDemoCounter();
+            
+            // 30% chance to show notification after user's demo
+            if (Math.random() > 0.7 && !notificationVisible) {
+                setTimeout(showDemoNotification, 2000);
+            }
+        };
     </script>
 
 </body>
