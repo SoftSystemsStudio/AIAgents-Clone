@@ -16,7 +16,7 @@ import asyncio
 import os
 from datetime import datetime
 from typing import Dict, List, Optional
-from src.domain.models import Agent, Tool
+from src.domain.models import Agent, Tool, ToolParameter
 from src.infrastructure.llm_providers import OpenAIProvider
 from src.infrastructure.repositories import InMemoryAgentRepository, InMemoryToolRegistry
 from src.infrastructure.observability import StructuredLogger
@@ -169,58 +169,137 @@ async def main():
     tool_registry = InMemoryToolRegistry()
     logger = StructuredLogger()
     
-    # Register tools
-    tools = [
-        Tool(
-            name="analyze_sentiment",
-            description="Analyze the sentiment and urgency of a message. Returns sentiment (positive/negative/neutral) and urgency level.",
-            handler=analyze_sentiment,
-            parameters={
-                "content": {"type": "string", "description": "The message content to analyze"}
-            }
-        ),
-        Tool(
-            name="classify_message",
-            description="Classify the type and intent of a message (inquiry, complaint, appreciation, etc.)",
-            handler=classify_message,
-            parameters={
-                "content": {"type": "string", "description": "The message content to classify"}
-            }
-        ),
-        Tool(
-            name="generate_email_response",
-            description="Generate a draft email response with specified tone (professional, friendly, apologetic, enthusiastic)",
-            handler=generate_email_response,
-            parameters={
-                "original_message": {"type": "string", "description": "The original message to respond to"},
-                "tone": {"type": "string", "description": "Desired tone: professional, friendly, apologetic, or enthusiastic"},
-                "include_signature": {"type": "boolean", "description": "Whether to include email signature"}
-            }
-        ),
-        Tool(
-            name="generate_social_response",
-            description="Generate a social media response for Twitter, LinkedIn, Facebook, or Instagram",
-            handler=generate_social_response,
-            parameters={
-                "platform": {"type": "string", "description": "Social media platform: twitter, linkedin, facebook, or instagram"},
-                "original_post": {"type": "string", "description": "The post/comment to respond to"},
-                "response_type": {"type": "string", "description": "Type of response: reply, comment, or dm"}
-            }
-        ),
-        Tool(
-            name="schedule_message",
-            description="Schedule a message for future sending on email or social media",
-            handler=schedule_message,
-            parameters={
-                "content": {"type": "string", "description": "Message content to schedule"},
-                "platform": {"type": "string", "description": "Platform: email, twitter, linkedin, facebook, instagram"},
-                "send_time": {"type": "string", "description": "When to send (ISO format or relative like '2 hours')"}
-            }
-        )
-    ]
+    # Create orchestrator first
+    orchestrator = AgentOrchestrator(
+        llm_provider=llm_provider,
+        agent_repository=agent_repo,
+        tool_registry=tool_registry,
+        observability=logger
+    )
     
-    for tool in tools:
-        tool_registry.register(tool)
+    # Register tools
+    print("🛠️  Registering tools...")
+    
+    sentiment_tool = Tool(
+        name="analyze_sentiment",
+        description="Analyze the sentiment and urgency of a message. Returns sentiment (positive/negative/neutral) and urgency level.",
+        parameters=[
+            ToolParameter(
+                name="content",
+                type="string",
+                description="The message content to analyze",
+                required=True
+            )
+        ],
+        handler_module="examples.email_social_automation_agent",
+        handler_function="analyze_sentiment"
+    )
+    tool_registry.register_tool(sentiment_tool)
+    
+    classify_tool = Tool(
+        name="classify_message",
+        description="Classify the type and intent of a message (inquiry, complaint, appreciation, etc.)",
+        parameters=[
+            ToolParameter(
+                name="content",
+                type="string",
+                description="The message content to classify",
+                required=True
+            )
+        ],
+        handler_module="examples.email_social_automation_agent",
+        handler_function="classify_message"
+    )
+    tool_registry.register_tool(classify_tool)
+    
+    email_tool = Tool(
+        name="generate_email_response",
+        description="Generate a draft email response with specified tone (professional, friendly, apologetic, enthusiastic)",
+        parameters=[
+            ToolParameter(
+                name="original_message",
+                type="string",
+                description="The original message to respond to",
+                required=True
+            ),
+            ToolParameter(
+                name="tone",
+                type="string",
+                description="Desired tone: professional, friendly, apologetic, or enthusiastic",
+                required=False,
+                default="professional"
+            ),
+            ToolParameter(
+                name="include_signature",
+                type="boolean",
+                description="Whether to include email signature",
+                required=False,
+                default=True
+            )
+        ],
+        handler_module="examples.email_social_automation_agent",
+        handler_function="generate_email_response"
+    )
+    tool_registry.register_tool(email_tool)
+    
+    social_tool = Tool(
+        name="generate_social_response",
+        description="Generate a social media response for Twitter, LinkedIn, Facebook, or Instagram",
+        parameters=[
+            ToolParameter(
+                name="platform",
+                type="string",
+                description="Social media platform: twitter, linkedin, facebook, or instagram",
+                required=True
+            ),
+            ToolParameter(
+                name="original_post",
+                type="string",
+                description="The post/comment to respond to",
+                required=True
+            ),
+            ToolParameter(
+                name="response_type",
+                type="string",
+                description="Type of response: reply, comment, or dm",
+                required=False,
+                default="reply"
+            )
+        ],
+        handler_module="examples.email_social_automation_agent",
+        handler_function="generate_social_response"
+    )
+    tool_registry.register_tool(social_tool)
+    
+    schedule_tool = Tool(
+        name="schedule_message",
+        description="Schedule a message for future sending on email or social media",
+        parameters=[
+            ToolParameter(
+                name="content",
+                type="string",
+                description="Message content to schedule",
+                required=True
+            ),
+            ToolParameter(
+                name="platform",
+                type="string",
+                description="Platform: email, twitter, linkedin, facebook, instagram",
+                required=True
+            ),
+            ToolParameter(
+                name="send_time",
+                type="string",
+                description="When to send (ISO format or relative like '2 hours')",
+                required=True
+            )
+        ],
+        handler_module="examples.email_social_automation_agent",
+        handler_function="schedule_message"
+    )
+    tool_registry.register_tool(schedule_tool)
+    
+    tools = [sentiment_tool, classify_tool, email_tool, social_tool, schedule_tool]
     
     print("🛠️  Registered Tools:")
     for tool in tools:
@@ -254,26 +333,20 @@ For complaints: Be apologetic, acknowledge the issue, offer solutions
 For inquiries: Be helpful, provide clear information, offer next steps
 For appreciation: Be grateful, brief, and genuine
 For pricing: Provide value context, suggest consultation call""",
+        model_provider="openai",
         model_name="gpt-4o",
         temperature=0.7,
-        tools=[tool.name for tool in tools]
+        allowed_tools=[tool.name for tool in tools],
+        max_iterations=5,
+        timeout_seconds=60
     )
     
-    agent_id = await agent_repo.save(agent)
-    agent.id = agent_id
+    await agent_repo.save(agent)
     
     print(f"✅ Created agent: {agent.name}")
     print(f"   Model: {agent.model_name}")
-    print(f"   Tools: {len(agent.tools)}")
+    print(f"   Tools: {len(agent.allowed_tools)}")
     print()
-    
-    # Initialize orchestrator
-    orchestrator = AgentOrchestrator(
-        llm_provider=llm_provider,
-        agent_repository=agent_repo,
-        tool_registry=tool_registry,
-        observability=logger
-    )
     
     # Test scenarios
     scenarios = [
@@ -309,21 +382,24 @@ Create a friendly, professional LinkedIn response that's engaging but not too sa
         print("=" * 80)
         print()
         
-        result = await orchestrator.execute(
-            agent_id=agent.id,
+        result = await orchestrator.execute_agent(
+            agent=agent,
             user_input=scenario['task']
         )
         
-        print(f"🤖 Agent Response:\n")
-        print(result.response)
-        print()
-        
-        print(f"📊 Execution Metrics:")
-        print(f"   • Tokens: {result.total_tokens}")
-        print(f"   • Duration: {result.duration:.2f}s")
-        print(f"   • Iterations: {result.iterations}")
-        print(f"   • Cost: ${result.cost:.4f}")
-        print()
+        if result.success:
+            print(f"🤖 Agent Response:\n")
+            print(result.output)
+            print()
+            
+            print(f"📊 Execution Metrics:")
+            print(f"   • Tokens: {result.total_tokens}")
+            print(f"   • Duration: {result.duration_seconds:.2f}s")
+            print(f"   • Iterations: {result.iterations}")
+            print(f"   • Cost: ${result.estimated_cost:.4f}")
+            print()
+        else:
+            print(f"❌ Error: {result.error}\n")
     
     print("=" * 80)
     print("✨ Email & Social Media Automation Demo Complete!")

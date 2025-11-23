@@ -17,7 +17,7 @@ import asyncio
 import os
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from src.domain.models import Agent, Tool
+from src.domain.models import Agent, Tool, ToolParameter
 from src.infrastructure.llm_providers import OpenAIProvider
 from src.infrastructure.repositories import InMemoryAgentRepository, InMemoryToolRegistry
 from src.infrastructure.observability import StructuredLogger
@@ -274,91 +274,253 @@ async def main():
     logger = StructuredLogger()
     
     # Register tools
-    tools = [
-        Tool(
-            name="check_availability",
-            description="Check calendar availability for a specific date and duration",
-            handler=check_availability,
-            parameters={
-                "date": {"type": "string", "description": "Date to check in YYYY-MM-DD format"},
-                "duration_minutes": {"type": "integer", "description": "Appointment duration in minutes (default: 60)"},
-                "time_zone": {"type": "string", "description": "Time zone (default: America/Los_Angeles)"}
-            }
-        ),
-        Tool(
-            name="find_available_slots",
-            description="Find all available appointment slots within a date range",
-            handler=find_available_slots,
-            parameters={
-                "start_date": {"type": "string", "description": "Start date in YYYY-MM-DD format"},
-                "end_date": {"type": "string", "description": "End date in YYYY-MM-DD format"},
-                "duration_minutes": {"type": "integer", "description": "Required duration in minutes"},
-                "preferred_times": {"type": "array", "description": "Optional preferred time slots (e.g., ['09:00', '14:00'])"}
-            }
-        ),
-        Tool(
-            name="create_booking",
-            description="Create a new appointment booking",
-            handler=create_booking,
-            parameters={
-                "client_name": {"type": "string", "description": "Client's full name"},
-                "client_email": {"type": "string", "description": "Client's email address"},
-                "date": {"type": "string", "description": "Appointment date (YYYY-MM-DD)"},
-                "time": {"type": "string", "description": "Appointment time (HH:MM)"},
-                "duration_minutes": {"type": "integer", "description": "Duration in minutes"},
-                "service_type": {"type": "string", "description": "Type of service/consultation"},
-                "notes": {"type": "string", "description": "Additional notes or requirements"}
-            }
-        ),
-        Tool(
-            name="send_booking_confirmation",
-            description="Send booking confirmation email with appointment details",
-            handler=send_booking_confirmation,
-            parameters={
-                "booking_id": {"type": "string", "description": "Booking ID"},
-                "client_email": {"type": "string", "description": "Client's email"},
-                "appointment_details": {"type": "object", "description": "Appointment details"}
-            }
-        ),
-        Tool(
-            name="reschedule_appointment",
-            description="Reschedule an existing appointment to a new date/time",
-            handler=reschedule_appointment,
-            parameters={
-                "booking_id": {"type": "string", "description": "Booking ID to reschedule"},
-                "new_date": {"type": "string", "description": "New date (YYYY-MM-DD)"},
-                "new_time": {"type": "string", "description": "New time (HH:MM)"},
-                "reason": {"type": "string", "description": "Optional reason for rescheduling"}
-            }
-        ),
-        Tool(
-            name="cancel_appointment",
-            description="Cancel an existing appointment",
-            handler=cancel_appointment,
-            parameters={
-                "booking_id": {"type": "string", "description": "Booking ID to cancel"},
-                "reason": {"type": "string", "description": "Optional cancellation reason"},
-                "cancelled_by": {"type": "string", "description": "Who cancelled: client or staff"}
-            }
-        ),
-        Tool(
-            name="send_appointment_reminder",
-            description="Send appointment reminder (24 hours, 2 hours, or 15 minutes before)",
-            handler=send_appointment_reminder,
-            parameters={
-                "booking_id": {"type": "string", "description": "Booking ID"},
-                "reminder_type": {"type": "string", "description": "24_hours, 2_hours, or 15_minutes"}
-            }
-        )
-    ]
+    print("🛠️  Registering tools...")
     
-    for tool in tools:
-        tool_registry.register(tool)
+    availability_tool = Tool(
+        name="check_availability",
+        description="Check calendar availability for a specific date and duration",
+        parameters=[
+            ToolParameter(
+                name="date",
+                type="string",
+                description="Date to check in YYYY-MM-DD format",
+                required=True
+            ),
+            ToolParameter(
+                name="duration_minutes",
+                type="integer",
+                description="Appointment duration in minutes (default: 60)",
+                required=False,
+                default=60
+            ),
+            ToolParameter(
+                name="time_zone",
+                type="string",
+                description="Time zone (default: America/Los_Angeles)",
+                required=False,
+                default="America/Los_Angeles"
+            )
+        ],
+        handler_module="examples.appointment_booking_agent",
+        handler_function="check_availability"
+    )
+    tool_registry.register_tool(availability_tool)
+    
+    find_slots_tool = Tool(
+        name="find_available_slots",
+        description="Find all available appointment slots within a date range",
+        parameters=[
+            ToolParameter(
+                name="start_date",
+                type="string",
+                description="Start date in YYYY-MM-DD format",
+                required=True
+            ),
+            ToolParameter(
+                name="end_date",
+                type="string",
+                description="End date in YYYY-MM-DD format",
+                required=True
+            ),
+            ToolParameter(
+                name="duration_minutes",
+                type="integer",
+                description="Required duration in minutes",
+                required=False,
+                default=60
+            ),
+            ToolParameter(
+                name="preferred_times",
+                type="array",
+                description="Optional preferred time slots (e.g., ['09:00', '14:00'])",
+                required=False
+            )
+        ],
+        handler_module="examples.appointment_booking_agent",
+        handler_function="find_available_slots"
+    )
+    tool_registry.register_tool(find_slots_tool)
+    
+    create_booking_tool = Tool(
+        name="create_booking",
+        description="Create a new appointment booking",
+        parameters=[
+            ToolParameter(
+                name="client_name",
+                type="string",
+                description="Client's full name",
+                required=True
+            ),
+            ToolParameter(
+                name="client_email",
+                type="string",
+                description="Client's email address",
+                required=True
+            ),
+            ToolParameter(
+                name="date",
+                type="string",
+                description="Appointment date (YYYY-MM-DD)",
+                required=True
+            ),
+            ToolParameter(
+                name="time",
+                type="string",
+                description="Appointment time (HH:MM)",
+                required=True
+            ),
+            ToolParameter(
+                name="duration_minutes",
+                type="integer",
+                description="Duration in minutes",
+                required=True
+            ),
+            ToolParameter(
+                name="service_type",
+                type="string",
+                description="Type of service/consultation",
+                required=True
+            ),
+            ToolParameter(
+                name="notes",
+                type="string",
+                description="Additional notes or requirements",
+                required=False
+            )
+        ],
+        handler_module="examples.appointment_booking_agent",
+        handler_function="create_booking"
+    )
+    tool_registry.register_tool(create_booking_tool)
+    
+    confirmation_tool = Tool(
+        name="send_booking_confirmation",
+        description="Send booking confirmation email with appointment details",
+        parameters=[
+            ToolParameter(
+                name="booking_id",
+                type="string",
+                description="Booking ID",
+                required=True
+            ),
+            ToolParameter(
+                name="client_email",
+                type="string",
+                description="Client's email",
+                required=True
+            ),
+            ToolParameter(
+                name="appointment_details",
+                type="object",
+                description="Appointment details",
+                required=True
+            )
+        ],
+        handler_module="examples.appointment_booking_agent",
+        handler_function="send_booking_confirmation"
+    )
+    tool_registry.register_tool(confirmation_tool)
+    
+    reschedule_tool = Tool(
+        name="reschedule_appointment",
+        description="Reschedule an existing appointment to a new date/time",
+        parameters=[
+            ToolParameter(
+                name="booking_id",
+                type="string",
+                description="Booking ID to reschedule",
+                required=True
+            ),
+            ToolParameter(
+                name="new_date",
+                type="string",
+                description="New date (YYYY-MM-DD)",
+                required=True
+            ),
+            ToolParameter(
+                name="new_time",
+                type="string",
+                description="New time (HH:MM)",
+                required=True
+            ),
+            ToolParameter(
+                name="reason",
+                type="string",
+                description="Optional reason for rescheduling",
+                required=False
+            )
+        ],
+        handler_module="examples.appointment_booking_agent",
+        handler_function="reschedule_appointment"
+    )
+    tool_registry.register_tool(reschedule_tool)
+    
+    cancel_tool = Tool(
+        name="cancel_appointment",
+        description="Cancel an existing appointment",
+        parameters=[
+            ToolParameter(
+                name="booking_id",
+                type="string",
+                description="Booking ID to cancel",
+                required=True
+            ),
+            ToolParameter(
+                name="reason",
+                type="string",
+                description="Optional cancellation reason",
+                required=False
+            ),
+            ToolParameter(
+                name="cancelled_by",
+                type="string",
+                description="Who cancelled: client or staff",
+                required=False,
+                default="client"
+            )
+        ],
+        handler_module="examples.appointment_booking_agent",
+        handler_function="cancel_appointment"
+    )
+    tool_registry.register_tool(cancel_tool)
+    
+    reminder_tool = Tool(
+        name="send_appointment_reminder",
+        description="Send appointment reminder (24 hours, 2 hours, or 15 minutes before)",
+        parameters=[
+            ToolParameter(
+                name="booking_id",
+                type="string",
+                description="Booking ID",
+                required=True
+            ),
+            ToolParameter(
+                name="reminder_type",
+                type="string",
+                description="24_hours, 2_hours, or 15_minutes",
+                required=False,
+                default="24_hours"
+            )
+        ],
+        handler_module="examples.appointment_booking_agent",
+        handler_function="send_appointment_reminder"
+    )
+    tool_registry.register_tool(reminder_tool)
+    
+    tools = [availability_tool, find_slots_tool, create_booking_tool, confirmation_tool, reschedule_tool, cancel_tool, reminder_tool]
     
     print("🛠️  Registered Tools:")
     for tool in tools:
         print(f"   • {tool.name}")
     print()
+    
+    # Initialize orchestrator
+    orchestrator = AgentOrchestrator(
+        llm_provider=llm_provider,
+        agent_repository=agent_repo,
+        tool_registry=tool_registry,
+        observability=logger
+    )
     
     # Create agent
     agent = Agent(
@@ -397,27 +559,21 @@ Business hours: Monday-Friday, 9 AM - 5 PM (exclude lunch 12-1 PM)
 Default appointment duration: 60 minutes
 Buffer time between appointments: 15 minutes
 Time zone: PST/PDT (America/Los_Angeles)""",
+        model_provider="openai",
         model_name="gpt-4o",
         temperature=0.4,  # Balanced for scheduling accuracy
-        tools=[tool.name for tool in tools]
+        allowed_tools=[tool.name for tool in tools],
+        max_iterations=5,
+        timeout_seconds=60
     )
     
-    agent_id = await agent_repo.save(agent)
-    agent.id = agent_id
+    await agent_repo.save(agent)
     
     print(f"✅ Created agent: {agent.name}")
     print(f"   Model: {agent.model_name}")
     print(f"   Temperature: {agent.temperature}")
-    print(f"   Tools: {len(agent.tools)}")
+    print(f"   Tools: {len(agent.allowed_tools)}")
     print()
-    
-    # Initialize orchestrator
-    orchestrator = AgentOrchestrator(
-        llm_provider=llm_provider,
-        agent_repository=agent_repo,
-        tool_registry=tool_registry,
-        observability=logger
-    )
     
     # Test scenarios
     scenarios = [
@@ -443,21 +599,24 @@ Please check availability and create a booking for her."""
         print("=" * 80)
         print()
         
-        result = await orchestrator.execute(
-            agent_id=agent.id,
+        result = await orchestrator.execute_agent(
+            agent=agent,
             user_input=scenario['task']
         )
         
-        print(f"🤖 Agent Response:\n")
-        print(result.response)
-        print()
-        
-        print(f"📊 Execution Metrics:")
-        print(f"   • Tokens: {result.total_tokens}")
-        print(f"   • Duration: {result.duration:.2f}s")
-        print(f"   • Iterations: {result.iterations}")
-        print(f"   • Cost: ${result.cost:.4f}")
-        print()
+        if result.success:
+            print(f"🤖 Agent Response:\n")
+            print(result.output)
+            print()
+            
+            print(f"📊 Execution Metrics:")
+            print(f"   • Tokens: {result.total_tokens}")
+            print(f"   • Duration: {result.duration_seconds:.2f}s")
+            print(f"   • Iterations: {result.iterations}")
+            print(f"   • Cost: ${result.estimated_cost:.4f}")
+            print()
+        else:
+            print(f"❌ Error: {result.error}\n")
     
     print("=" * 80)
     print("✨ Appointment & Booking Automation Demo Complete!")

@@ -17,7 +17,7 @@ import os
 import json
 from datetime import datetime
 from typing import Dict, List, Any
-from src.domain.models import Agent, Tool
+from src.domain.models import Agent, Tool, ToolParameter
 from src.infrastructure.llm_providers import OpenAIProvider
 from src.infrastructure.repositories import InMemoryAgentRepository, InMemoryToolRegistry
 from src.infrastructure.observability import StructuredLogger
@@ -241,70 +241,154 @@ async def main():
     logger = StructuredLogger()
     
     # Register tools
-    tools = [
-        Tool(
-            name="extract_data_from_text",
-            description="Extract structured data from unstructured text (contact info, invoices, addresses, etc.)",
-            handler=extract_data_from_text,
-            parameters={
-                "text": {"type": "string", "description": "The unstructured text to extract data from"},
-                "data_type": {"type": "string", "description": "Type of data to extract: contact_info, invoice, address, etc."}
-            }
-        ),
-        Tool(
-            name="validate_data",
-            description="Validate data entries against business rules and format requirements",
-            handler=validate_data,
-            parameters={
-                "data": {"type": "object", "description": "The data to validate"},
-                "validation_rules": {"type": "object", "description": "Validation rules to apply"}
-            }
-        ),
-        Tool(
-            name="transform_data_format",
-            description="Convert data between formats (CSV, JSON, XML, Excel)",
-            handler=transform_data_format,
-            parameters={
-                "data": {"type": "object", "description": "The data to transform"},
-                "source_format": {"type": "string", "description": "Current format: csv, json, xml, excel"},
-                "target_format": {"type": "string", "description": "Desired format: csv, json, xml, excel"}
-            }
-        ),
-        Tool(
-            name="detect_duplicates",
-            description="Detect duplicate records in a dataset based on key fields",
-            handler=detect_duplicates,
-            parameters={
-                "records": {"type": "array", "description": "List of records to check for duplicates"},
-                "key_fields": {"type": "array", "description": "Fields to use for duplicate detection (e.g., ['email', 'name'])"}
-            }
-        ),
-        Tool(
-            name="clean_data",
-            description="Clean and standardize data entries (trim whitespace, format phone numbers, capitalize names, etc.)",
-            handler=clean_data,
-            parameters={
-                "data": {"type": "object", "description": "The data to clean"},
-                "cleaning_rules": {"type": "object", "description": "Cleaning rules to apply"}
-            }
-        ),
-        Tool(
-            name="generate_quality_report",
-            description="Generate a comprehensive data quality report with metrics and recommendations",
-            handler=generate_quality_report,
-            parameters={
-                "dataset": {"type": "array", "description": "The dataset to analyze"}
-            }
-        )
-    ]
+    print("🛠️  Registering tools...")
     
-    for tool in tools:
-        tool_registry.register(tool)
+    extract_tool = Tool(
+        name="extract_data_from_text",
+        description="Extract structured data from unstructured text (contact info, invoices, addresses, etc.)",
+        parameters=[
+            ToolParameter(
+                name="text",
+                type="string",
+                description="The unstructured text to extract data from",
+                required=True
+            ),
+            ToolParameter(
+                name="data_type",
+                type="string",
+                description="Type of data to extract: contact_info, invoice, address, etc.",
+                required=True
+            )
+        ],
+        handler_module="examples.data_processing_agent",
+        handler_function="extract_data_from_text"
+    )
+    tool_registry.register_tool(extract_tool)
+    
+    validate_tool = Tool(
+        name="validate_data",
+        description="Validate data entries against business rules and format requirements",
+        parameters=[
+            ToolParameter(
+                name="data",
+                type="object",
+                description="The data to validate",
+                required=True
+            ),
+            ToolParameter(
+                name="validation_rules",
+                type="object",
+                description="Validation rules to apply",
+                required=True
+            )
+        ],
+        handler_module="examples.data_processing_agent",
+        handler_function="validate_data"
+    )
+    tool_registry.register_tool(validate_tool)
+    
+    transform_tool = Tool(
+        name="transform_data_format",
+        description="Convert data between formats (CSV, JSON, XML, Excel)",
+        parameters=[
+            ToolParameter(
+                name="data",
+                type="object",
+                description="The data to transform",
+                required=True
+            ),
+            ToolParameter(
+                name="source_format",
+                type="string",
+                description="Current format: csv, json, xml, excel",
+                required=True
+            ),
+            ToolParameter(
+                name="target_format",
+                type="string",
+                description="Desired format: csv, json, xml, excel",
+                required=True
+            )
+        ],
+        handler_module="examples.data_processing_agent",
+        handler_function="transform_data_format"
+    )
+    tool_registry.register_tool(transform_tool)
+    
+    duplicates_tool = Tool(
+        name="detect_duplicates",
+        description="Detect duplicate records in a dataset based on key fields",
+        parameters=[
+            ToolParameter(
+                name="records",
+                type="array",
+                description="List of records to check for duplicates",
+                required=True
+            ),
+            ToolParameter(
+                name="key_fields",
+                type="array",
+                description="Fields to use for duplicate detection (e.g., ['email', 'name'])",
+                required=True
+            )
+        ],
+        handler_module="examples.data_processing_agent",
+        handler_function="detect_duplicates"
+    )
+    tool_registry.register_tool(duplicates_tool)
+    
+    clean_tool = Tool(
+        name="clean_data",
+        description="Clean and standardize data entries (trim whitespace, format phone numbers, capitalize names, etc.)",
+        parameters=[
+            ToolParameter(
+                name="data",
+                type="object",
+                description="The data to clean",
+                required=True
+            ),
+            ToolParameter(
+                name="cleaning_rules",
+                type="object",
+                description="Cleaning rules to apply",
+                required=True
+            )
+        ],
+        handler_module="examples.data_processing_agent",
+        handler_function="clean_data"
+    )
+    tool_registry.register_tool(clean_tool)
+    
+    report_tool = Tool(
+        name="generate_quality_report",
+        description="Generate a comprehensive data quality report with metrics and recommendations",
+        parameters=[
+            ToolParameter(
+                name="dataset",
+                type="array",
+                description="The dataset to analyze",
+                required=True
+            )
+        ],
+        handler_module="examples.data_processing_agent",
+        handler_function="generate_quality_report"
+    )
+    tool_registry.register_tool(report_tool)
+    
+    tools = [extract_tool, validate_tool, transform_tool, duplicates_tool, clean_tool, report_tool]
     
     print("🛠️  Registered Tools:")
     for tool in tools:
         print(f"   • {tool.name}")
     print()
+    
+    # Initialize orchestrator
+    orchestrator = AgentOrchestrator(
+        llm_provider=llm_provider,
+        agent_repository=agent_repo,
+        tool_registry=tool_registry,
+        observability=logger
+    )
     
     # Create agent
     agent = Agent(
@@ -336,27 +420,21 @@ For extractions: Use context to identify field types accurately
 For validations: Check format, range, required fields, business rules
 For cleaning: Standardize formats, remove duplicates, fix inconsistencies
 For reporting: Provide metrics, trends, and actionable recommendations""",
+        model_provider="openai",
         model_name="gpt-4o",
         temperature=0.3,  # Lower temperature for more deterministic results
-        tools=[tool.name for tool in tools]
+        allowed_tools=[tool.name for tool in tools],
+        max_iterations=5,
+        timeout_seconds=60
     )
     
-    agent_id = await agent_repo.save(agent)
-    agent.id = agent_id
+    await agent_repo.save(agent)
     
     print(f"✅ Created agent: {agent.name}")
     print(f"   Model: {agent.model_name}")
     print(f"   Temperature: {agent.temperature} (precise mode)")
-    print(f"   Tools: {len(agent.tools)}")
+    print(f"   Tools: {len(agent.allowed_tools)}")
     print()
-    
-    # Initialize orchestrator
-    orchestrator = AgentOrchestrator(
-        llm_provider=llm_provider,
-        agent_repository=agent_repo,
-        tool_registry=tool_registry,
-        observability=logger
-    )
     
     # Test scenarios
     scenarios = [
@@ -399,21 +477,24 @@ Generate a quality report with metrics and recommendations."""
         print("=" * 80)
         print()
         
-        result = await orchestrator.execute(
-            agent_id=agent.id,
+        result = await orchestrator.execute_agent(
+            agent=agent,
             user_input=scenario['task']
         )
         
-        print(f"🤖 Agent Response:\n")
-        print(result.response)
-        print()
-        
-        print(f"📊 Execution Metrics:")
-        print(f"   • Tokens: {result.total_tokens}")
-        print(f"   • Duration: {result.duration:.2f}s")
-        print(f"   • Iterations: {result.iterations}")
-        print(f"   • Cost: ${result.cost:.4f}")
-        print()
+        if result.success:
+            print(f"🤖 Agent Response:\n")
+            print(result.output)
+            print()
+            
+            print(f"📊 Execution Metrics:")
+            print(f"   • Tokens: {result.total_tokens}")
+            print(f"   • Duration: {result.duration_seconds:.2f}s")
+            print(f"   • Iterations: {result.iterations}")
+            print(f"   • Cost: ${result.estimated_cost:.4f}")
+            print()
+        else:
+            print(f"❌ Error: {result.error}\n")
     
     print("=" * 80)
     print("✨ Data Entry & Processing Automation Demo Complete!")
