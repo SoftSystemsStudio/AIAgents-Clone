@@ -136,6 +136,7 @@ curl -X POST http://localhost:8000/gmail/cleanup/analyze \
 - **Marketing site:** Static pages live in `website/` (`index.html`, `solutions.html`, `pricing.html`, `platform.html`). Run `./build.sh` to package them into `build/` for deployment.
 - **Live demo telemetry:** The landing page consumes `/api/v1/demo/stream` (SSE) with a polling fallback for recent demo events. Keep this endpoint available in production for the on-page activity feed.
 - **Production readiness gaps:** See `docs/PRODUCTION_READINESS_GAPS.md` for the prioritized backlog to reach a multi-page, live-agent experience.
+- **Marketing site:** Static pages and configuration templates live in `website/`; `build.sh` copies these into `build/` for deployments.
 
 ## 📦 Project Structure
 
