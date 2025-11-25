@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soft Systems Studio | Platform</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-white">
+  <header class="container mx-auto px-4 py-6 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <img src="assets/S Logo - Black Blackground.png" alt="Soft Systems Studio Logo" class="h-10 w-10">
+      <span class="text-2xl font-bold text-[#c0ff6b]">Soft Systems Studio</span>
+    </div>
+    <nav class="hidden md:flex space-x-6 text-gray-300">
+      <a href="/index.html" class="hover:text-white">Home</a>
+      <a href="/solutions.html" class="hover:text-white">Solutions</a>
+      <a href="/pricing.html" class="hover:text-white">Pricing</a>
+      <a href="/platform.html" class="text-white font-semibold">Platform</a>
+      <a href="/api/docs" class="hover:text-white">API Docs</a>
+    </nav>
+    <a href="/quickstart.sh" class="hidden md:inline-flex border border-gray-600 text-gray-200 font-semibold px-4 py-2 rounded-lg hover:border-gray-400">Download quickstart</a>
+  </header>
+
+  <main class="container mx-auto px-4 pb-20">
+    <section class="text-center py-12">
+      <p class="text-sm uppercase tracking-wide text-gray-400">Platform</p>
+      <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Built for reliability and observability</h1>
+      <p class="text-lg text-gray-400 max-w-4xl mx-auto">The FastAPI backend ships with health checks, rate limits, optional Redis persistence, and a live server-sent-events stream to monitor demo usage in real time.</p>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-2xl font-semibold mb-2">Backend</h2>
+        <ul class="space-y-2 text-gray-300">
+          <li>✅ FastAPI services with auth, contact, Gmail cleanup, and demo logging routes</li>
+          <li>✅ Redis-backed persistence for demo events when <code>DEMO_STORE=redis</code> is set</li>
+          <li>✅ New <code>/api/v1/demo/stream</code> SSE endpoint for real-time activity feeds</li>
+          <li>✅ Configurable rate limiting and spam protections on demo submissions</li>
+        </ul>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <h2 class="text-2xl font-semibold mb-2">Frontend</h2>
+        <ul class="space-y-2 text-gray-300">
+          <li>✅ Multi-page marketing site (Home, Solutions, Pricing, Platform)</li>
+          <li>✅ Live activity module powered by SSE with polling fallback</li>
+          <li>✅ Tailwind styling with reusable navigation across pages</li>
+          <li>✅ Demo CTA wired to backend demo endpoints</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="mt-12 bg-gray-900 border border-gray-800 rounded-2xl p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div>
+        <h3 class="text-xl font-semibold mb-3">Next steps for production</h3>
+        <ul class="space-y-2 text-gray-300">
+          <li>• Provision managed Redis/Postgres for durable state</li>
+          <li>• Add OpenTelemetry exporters for traces and metrics</li>
+          <li>• Wire background workers for long-running agent tasks</li>
+          <li>• Harden auth with SSO and API keys per environment</li>
+        </ul>
+      </div>
+      <div class="bg-black/40 border border-gray-700 rounded-xl p-6">
+        <h4 class="text-lg font-semibold mb-2">Resources</h4>
+        <ul class="space-y-2 text-gray-300">
+          <li><a class="text-[#c0ff6b] hover:underline" href="/docs/guides/QUICK_DEPLOY.md">Deployment guide</a></li>
+          <li><a class="text-[#c0ff6b] hover:underline" href="/docs/guides/GMAIL_QUICKSTART.md">Gmail quickstart</a></li>
+          <li><a class="text-[#c0ff6b] hover:underline" href="/api/docs">API reference</a></li>
+          <li><a class="text-[#c0ff6b] hover:underline" href="/index.html#demo">Live demo</a></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

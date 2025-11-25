@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Soft Systems Studio - Custom AI Automation Solutions</title>
+    <meta name="description" content="Custom AI automation solutions with live demo agents, pricing, platform details, and real-time activity streaming." />
+    <meta property="og:title" content="Soft Systems Studio" />
+    <meta property="og:description" content="Automate customer service, scheduling, and data workflows with production-ready AI agents." />
+    <meta property="og:type" content="website" />
+
     
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-8KJVEMXLGQ"></script>
@@ -120,6 +125,10 @@
             <span class="text-2xl font-bold text-[#c0ff6b]">Soft Systems Studio</span>
         </div>
         <nav class="hidden md:flex space-x-8 text-gray-400">
+            <a href="/index.html" aria-current="page" class="hover:text-white transition">Home</a>
+            <a href="/solutions.html" class="hover:text-white transition">Solutions</a>
+            <a href="/pricing.html" class="hover:text-white transition">Pricing</a>
+            <a href="/platform.html" class="hover:text-white transition">Platform</a>
             <a href="#features" class="hover:text-white transition">Features</a>
             <a href="#demo" class="hover:text-white transition">Try Demo</a>
             <a href="#pricing" class="hover:text-white transition">Pricing</a>
@@ -1580,6 +1589,30 @@ Please reach out regarding new automation project.</textarea>
         loadEmailScenario();
         
         // Real-time activity feed (backend-driven)
+        let activityEvents = [];
+        let activityStream;
+        let activityPollInterval;
+
+        function renderActivityFeed() {
+            const feed = document.getElementById('activity-feed');
+            if (!feed) return;
+
+            if (!activityEvents || activityEvents.length === 0) {
+                feed.innerHTML = '<div class="text-gray-500 text-sm py-4 text-center">No recent activity yet — be the first to try a demo!</div>';
+                return;
+            }
+
+            const current = activityEvents.slice(0, 4);
+            feed.innerHTML = current.map(ev => {
+                const icon = ev.agent && ev.agent.includes('email') ? '📧' : ev.agent && ev.agent.includes('support') ? '💬' : ev.agent && ev.agent.includes('booking') ? '📅' : '📊';
+                const name = ev.name || 'Visitor';
+                const location = ev.city ? ` • ${ev.city}` : '';
+                const time = ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : '';
+                return `\n                    <div class="flex items-center justify-between py-2 border-b border-gray-700 last:border-0 ${ev.highlight ? 'bg-lime-500/5 px-2 rounded' : ''}">\n                        <div class="flex items-center">\n                            <span class="mr-2">${icon}</span>\n                            <span class="text-gray-300">${name} ${ev.actionText ? ev.actionText : 'tried an agent'}${location}</span>\n                        </div>\n                        <span class="text-xs text-gray-500">${time}</span>\n                    </div>\n                `;
+            }).join('');
+        }
+
+        async function fetchRecentActivities(limit = 8) {
         let activityIndex = 0;
 
         async function fetchRecentActivities(limit = 6) {
@@ -1595,6 +1628,56 @@ Please reach out regarding new automation project.</textarea>
             }
         }
 
+        async function startPollingActivity() {
+            activityEvents = await fetchRecentActivities(8);
+            renderActivityFeed();
+            if (activityPollInterval) clearInterval(activityPollInterval);
+            activityPollInterval = setInterval(async () => {
+                activityEvents = await fetchRecentActivities(8);
+                renderActivityFeed();
+            }, 10000);
+        }
+
+        function connectActivityStream() {
+            if (!window.EventSource) {
+                startPollingActivity();
+                return;
+            }
+
+            if (activityStream) {
+                activityStream.close();
+            }
+
+            activityStream = new EventSource('/api/v1/demo/stream');
+
+            activityStream.onmessage = (evt) => {
+                try {
+                    const payload = JSON.parse(evt.data);
+                    if (payload.type === 'snapshot') {
+                        activityEvents = payload.events || [];
+                        renderActivityFeed();
+                        return;
+                    }
+                    if (payload.type === 'activity' && payload.event) {
+                        const enriched = { ...payload.event, highlight: true };
+                        activityEvents = [enriched, ...activityEvents].slice(0, 8);
+                        renderActivityFeed();
+                    }
+                } catch (err) {
+                    console.warn('Failed to parse activity stream payload', err);
+                }
+            };
+
+            activityStream.onerror = () => {
+                if (activityStream) {
+                    activityStream.close();
+                }
+                // Fallback to polling after a small delay
+                setTimeout(() => startPollingActivity(), 2000);
+            };
+        }
+
+        connectActivityStream();
         async function updateActivityFeed() {
             const feed = document.getElementById('activity-feed');
             if (!feed) return;

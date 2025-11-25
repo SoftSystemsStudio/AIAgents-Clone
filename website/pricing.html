@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soft Systems Studio | Pricing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-white">
+  <header class="container mx-auto px-4 py-6 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <img src="assets/S Logo - Black Blackground.png" alt="Soft Systems Studio Logo" class="h-10 w-10">
+      <span class="text-2xl font-bold text-[#c0ff6b]">Soft Systems Studio</span>
+    </div>
+    <nav class="hidden md:flex space-x-6 text-gray-300">
+      <a href="/index.html" class="hover:text-white">Home</a>
+      <a href="/solutions.html" class="hover:text-white">Solutions</a>
+      <a href="/pricing.html" class="text-white font-semibold">Pricing</a>
+      <a href="/platform.html" class="hover:text-white">Platform</a>
+      <a href="/api/docs" class="hover:text-white">API Docs</a>
+    </nav>
+    <a href="/api/v1/auth/signup" class="hidden md:inline-flex bg-[#c0ff6b] text-black font-semibold px-4 py-2 rounded-lg hover:bg-[#a3e048]">Start free trial</a>
+  </header>
+
+  <main class="container mx-auto px-4 pb-20">
+    <section class="text-center py-12">
+      <p class="text-sm uppercase tracking-wide text-gray-400">Pricing</p>
+      <h1 class="text-4xl md:text-5xl font-extrabold mb-4">Launch fast, scale safely</h1>
+      <p class="text-lg text-gray-400 max-w-3xl mx-auto">Transparent pricing for teams that need production-grade AI agents, with room to experiment before you commit.</p>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 flex flex-col">
+        <p class="text-sm text-gray-400 uppercase">Pilot</p>
+        <h2 class="text-3xl font-bold my-2">$0</h2>
+        <p class="text-gray-400 mb-4">Test drive one agent with limited volume.</p>
+        <ul class="text-gray-300 space-y-2 flex-1">
+          <li>• 1 demo agent & canned scenarios</li>
+          <li>• In-memory storage (no persistence)</li>
+          <li>• Email support</li>
+        </ul>
+        <a href="/index.html#demo" class="mt-6 text-center bg-gray-200 text-black font-semibold px-4 py-3 rounded-lg hover:bg-white">Try the live demo</a>
+      </div>
+      <div class="bg-gray-900 border border-[#c0ff6b] rounded-2xl p-8 flex flex-col shadow-lg">
+        <p class="text-sm text-[#c0ff6b] uppercase">Growth</p>
+        <h2 class="text-3xl font-bold my-2">$1,250/mo</h2>
+        <p class="text-gray-400 mb-4">Production agents with monitoring and persistence.</p>
+        <ul class="text-gray-300 space-y-2 flex-1">
+          <li>• Up to 3 production agents</li>
+          <li>• Redis/DB persistence & audit logs</li>
+          <li>• Email + Slack support</li>
+          <li>• Weekly performance reviews</li>
+        </ul>
+        <a href="mailto:hello@softsystemsstudio.com" class="mt-6 text-center bg-[#c0ff6b] text-black font-semibold px-4 py-3 rounded-lg hover:bg-[#a3e048]">Book onboarding</a>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-8 flex flex-col">
+        <p class="text-sm text-gray-400 uppercase">Enterprise</p>
+        <h2 class="text-3xl font-bold my-2">Custom</h2>
+        <p class="text-gray-400 mb-4">Tailored rollouts with security reviews and SLOs.</p>
+        <ul class="text-gray-300 space-y-2 flex-1">
+          <li>• Unlimited agents & environments</li>
+          <li>• Private data connectors and SSO</li>
+          <li>• Dedicated TAM + incident playbooks</li>
+          <li>• Custom SLAs & reporting</li>
+        </ul>
+        <a href="mailto:hello@softsystemsstudio.com" class="mt-6 text-center border border-gray-600 text-gray-200 font-semibold px-4 py-3 rounded-lg hover:border-gray-400">Schedule a security review</a>
+      </div>
+    </section>
+
+    <section class="mt-16 bg-gray-900 border border-gray-800 rounded-2xl p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+      <div>
+        <h3 class="text-2xl font-bold mb-3">What’s included</h3>
+        <ul class="space-y-2 text-gray-300">
+          <li>✅ Observability hooks for metrics, logs, and traces</li>
+          <li>✅ Webhook + REST APIs for orchestration</li>
+          <li>✅ Built-in rate limiting and spam controls</li>
+          <li>✅ Access to the live activity stream feed</li>
+        </ul>
+      </div>
+      <div>
+        <h3 class="text-2xl font-bold mb-3">Add-ons</h3>
+        <ul class="space-y-2 text-gray-300">
+          <li>• Dedicated Redis/Postgres provisioning</li>
+          <li>• Custom dashboards connected to your data warehouse</li>
+          <li>• On-call response and incident simulations</li>
+          <li>• Model evaluation + red teaming</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
