@@ -31,6 +31,40 @@ jobs:
           echo "Running build.sh (DEMO_KEY injected if provided in secrets)"
           ./build.sh
 
+      - name: Validate DEMO_KEY injection
+        run: |
+          set -euo pipefail
+          # If DEMO_KEY is empty, skip validation (PR previews may not set it)
+          if [ -z "${DEMO_KEY:-}" ]; then
+            echo "DEMO_KEY not provided; skipping injection validation"
+            exit 0
+          fi
+
+          if [ ! -f build/index.html ]; then
+            echo "build/index.html not found" >&2
+            exit 1
+          fi
+
+          # Ensure meta tag exists
+          if ! grep -q '<meta name="demo-key"' build/index.html; then
+            echo "meta[name=\"demo-key\"] not found in build/index.html" >&2
+            exit 1
+          fi
+
+          # Extract the content value
+          val=$(sed -n 's/.*<meta name="demo-key" content="\([^"]*\)".*/\1/p' build/index.html || true)
+          if [ -z "$val" ]; then
+            echo "demo-key meta content is empty" >&2
+            exit 1
+          fi
+
+          if [ "$val" != "${DEMO_KEY}" ]; then
+            echo "demo-key mismatch: build contains '$val' but DEMO_KEY is set to '${DEMO_KEY}'" >&2
+            exit 1
+          fi
+
+          echo "DEMO_KEY validated in build/index.html"
+
       - name: Ensure DEMO_KEY present for production deploy
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         env:
