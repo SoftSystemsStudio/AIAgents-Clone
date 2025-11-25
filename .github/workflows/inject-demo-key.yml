@@ -3,6 +3,8 @@ name: Build (inject DEMO_KEY)
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
@@ -21,13 +23,23 @@ jobs:
           chmod +x ./scripts/inject_demo_key.py || true
           chmod +x ./build.sh || true
 
-      - name: Run build.sh with DEMO_KEY
+      - name: Run build.sh
         env:
           DEMO_KEY: ${{ secrets.DEMO_KEY }}
           WEB3FORMS_ACCESS_KEY: ${{ secrets.WEB3FORMS_ACCESS_KEY }}
         run: |
-          echo "Running build.sh (DEMO_KEY injected from secrets)"
+          echo "Running build.sh (DEMO_KEY injected if provided in secrets)"
           ./build.sh
+
+      - name: Ensure DEMO_KEY present for production deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          DEMO_KEY: ${{ secrets.DEMO_KEY }}
+        run: |
+          if [ -z "${DEMO_KEY:-}" ]; then
+            echo "ERROR: DEMO_KEY secret is required for production deploy but is not set." >&2
+            exit 1
+          fi
 
       - name: Upload built site artifact
         uses: actions/upload-artifact@v4
@@ -36,7 +48,18 @@ jobs:
           path: |
             build/**
 
-      - name: Deploy to Vercel
+      - name: Deploy preview to Vercel (Pull Request)
+        if: github.event_name == 'pull_request'
+        uses: amondnet/vercel-action@v20
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          # No --prod for preview
+          vercel-args: ''
+          working-directory: ./build
+
+      - name: Deploy to Vercel (Production)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: amondnet/vercel-action@v20
         with:
           vercel-token: ${{ secrets.VERCEL_TOKEN }}
