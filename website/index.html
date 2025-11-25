@@ -120,10 +120,10 @@
             <span class="text-2xl font-bold text-[#c0ff6b]">Soft Systems Studio</span>
         </div>
         <nav class="hidden md:flex space-x-8 text-gray-400">
-            <a href="#features" class="hover:text-white transition">Features</a>
-            <a href="#demo" class="hover:text-white transition">Try Demo</a>
-            <a href="#pricing" class="hover:text-white transition">Pricing</a>
-            <a href="#how-it-works" class="hover:text-white transition">How it works</a>
+            <a href="/index.html" class="hover:text-white transition">Home</a>
+            <a href="/solutions.html" class="hover:text-white transition">Solutions</a>
+            <a href="/pricing.html" class="hover:text-white transition">Pricing</a>
+            <a href="/platform.html" class="hover:text-white transition">Platform</a>
             <a href="/api/docs" class="hover:text-white transition">API Docs</a>
         </nav>
         <div class="flex items-center space-x-4">
@@ -1580,34 +1580,20 @@ Please reach out regarding new automation project.</textarea>
         loadEmailScenario();
         
         // Real-time activity feed (backend-driven)
-        let activityIndex = 0;
+        let activityEvents = [];
+        let activityStream;
+        let activityPollInterval;
 
-        async function fetchRecentActivities(limit = 6) {
-            try {
-                const resp = await fetch('/api/v1/demo/recent?limit=' + encodeURIComponent(limit));
-                if (!resp.ok) throw new Error('Network response was not ok');
-                const data = await resp.json();
-                return data.events || [];
-            } catch (err) {
-                // Fallback to empty list on error
-                console.warn('Failed to fetch recent activities:', err);
-                return [];
-            }
-        }
-
-        async function updateActivityFeed() {
+        function renderActivityFeed() {
             const feed = document.getElementById('activity-feed');
             if (!feed) return;
 
-            const events = await fetchRecentActivities(8);
-            if (!events || events.length === 0) {
-                // Show a small placeholder when no events
+            if (!activityEvents || activityEvents.length === 0) {
                 feed.innerHTML = '<div class="text-gray-500 text-sm py-4 text-center">No recent activity yet — be the first to try a demo!</div>';
                 return;
             }
 
-            // Display up to 4 events at a time
-            const current = events.slice(0, 4);
+            const current = activityEvents.slice(0, 4);
             feed.innerHTML = current.map(ev => {
                 const icon = ev.agent && ev.agent.includes('email') ? '📧' : ev.agent && ev.agent.includes('support') ? '💬' : ev.agent && ev.agent.includes('booking') ? '📅' : '📊';
                 const name = ev.name || 'Visitor';
@@ -1617,9 +1603,68 @@ Please reach out regarding new automation project.</textarea>
             }).join('');
         }
 
-        // Poll backend for recent activity every 10s
-        updateActivityFeed();
-        setInterval(updateActivityFeed, 10000);
+        async function fetchRecentActivities(limit = 8) {
+            try {
+                const resp = await fetch('/api/v1/demo/recent?limit=' + encodeURIComponent(limit));
+                if (!resp.ok) throw new Error('Network response was not ok');
+                const data = await resp.json();
+                return data.events || [];
+            } catch (err) {
+                console.warn('Failed to fetch recent activities:', err);
+                return [];
+            }
+        }
+
+        async function startPollingActivity() {
+            activityEvents = await fetchRecentActivities(8);
+            renderActivityFeed();
+            if (activityPollInterval) clearInterval(activityPollInterval);
+            activityPollInterval = setInterval(async () => {
+                activityEvents = await fetchRecentActivities(8);
+                renderActivityFeed();
+            }, 10000);
+        }
+
+        function connectActivityStream() {
+            if (!window.EventSource) {
+                startPollingActivity();
+                return;
+            }
+
+            if (activityStream) {
+                activityStream.close();
+            }
+
+            activityStream = new EventSource('/api/v1/demo/stream');
+
+            activityStream.onmessage = (evt) => {
+                try {
+                    const payload = JSON.parse(evt.data);
+                    if (payload.type === 'snapshot') {
+                        activityEvents = payload.events || [];
+                        renderActivityFeed();
+                        return;
+                    }
+                    if (payload.type === 'activity' && payload.event) {
+                        const enriched = { ...payload.event, highlight: true };
+                        activityEvents = [enriched, ...activityEvents].slice(0, 8);
+                        renderActivityFeed();
+                    }
+                } catch (err) {
+                    console.warn('Failed to parse activity stream payload', err);
+                }
+            };
+
+            activityStream.onerror = () => {
+                if (activityStream) {
+                    activityStream.close();
+                }
+                // Fallback to polling after a small delay
+                setTimeout(() => startPollingActivity(), 2000);
+            };
+        }
+
+        connectActivityStream();
         
         // Floating notification system
         const notifications = [

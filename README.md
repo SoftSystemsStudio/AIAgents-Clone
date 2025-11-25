@@ -130,6 +130,12 @@ curl -X POST http://localhost:8000/gmail/cleanup/analyze \
 
 📖 **[Gmail Setup Guide](docs/GMAIL_SETUP.md)** | **[Architecture Details](docs/GMAIL_CLEANUP_ARCHITECTURE.md)**
 
+## 📚 Documentation & assets
+
+- **Guides & Playbooks:** See `docs/guides/` for deployment, quickstart, and enablement guides (moved here to keep the repo root tidy).
+- **Marketing site:** Static pages and configuration templates live in `website/`; `build.sh` copies these into `build/` for deployments.
+- **Production readiness gaps:** See `docs/PRODUCTION_READINESS_GAPS.md` for the prioritized backlog to reach a multi-page, live-agent experience.
+
 ## 📦 Project Structure
 
 ```

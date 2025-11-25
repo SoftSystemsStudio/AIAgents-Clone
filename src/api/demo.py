@@ -5,12 +5,14 @@ Provides an in-memory store for recent demo events by default. If
 be persisted to Redis (list key `demo:events`) so they survive app
 restarts.
 """
+import asyncio
 from datetime import datetime, timedelta
 from typing import List, Dict, Any
 import os
 import json
 
 from fastapi import APIRouter, HTTPException, Request, status
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import logging
 
@@ -38,6 +40,10 @@ _RATE_WINDOW = timedelta(seconds=60)  # per 60 seconds
 _REDIS_ENABLED = False
 _redis = None
 _REDIS_KEY = "demo:events"
+
+# Simple pub/sub for server-sent events
+_subscribers: set[asyncio.Queue[Dict[str, Any]]] = set()
+_subscriber_lock = asyncio.Lock()
 
 logger = logging.getLogger(__name__)
 
@@ -120,6 +126,7 @@ async def record_demo(event: DemoEvent, request: Request) -> Dict[str, Any]:
             payload = json.dumps(event.dict())
             await _redis.lpush(_REDIS_KEY, payload)
             await _redis.ltrim(_REDIS_KEY, 0, _MAX_EVENTS - 1)
+            asyncio.create_task(_broadcast_event(event.dict()))
             return {"success": True, "message": "Recorded (redis)", "event": event}
         except Exception:
             logger.exception("Redis write failed; falling back to in-memory store")
@@ -129,17 +136,23 @@ async def record_demo(event: DemoEvent, request: Request) -> Dict[str, Any]:
     # Trim store
     if len(_events) > _MAX_EVENTS:
         del _events[_MAX_EVENTS:]
+
+    asyncio.create_task(_broadcast_event(event.dict()))
     return {"success": True, "message": "Recorded", "event": event}
 
 
 @router.get("/demo/recent")
 async def recent_demos(limit: int = 6) -> Dict[str, Any]:
     """Return the most recent demo events (newest first)."""
+    events = await _get_recent_events(limit)
+    return {"events": events}
+
+
+async def _get_recent_events(limit: int) -> List[Dict[str, Any]]:
     try:
         l = max(1, min(50, int(limit)))
     except Exception:
         l = 6
-
     # If Redis enabled, read from Redis list
     if _REDIS_ENABLED and _redis is not None:
         try:
@@ -152,9 +165,60 @@ async def recent_demos(limit: int = 6) -> Dict[str, Any]:
                     events.append(json.loads(item))
                 except Exception:
                     logger.exception("Failed to parse redis event item")
-            return {"events": events}
+            return events
         except Exception:
             logger.exception("Redis read failed; falling back to in-memory store")
 
     # Fallback to in-memory
-    return {"events": [e.dict() for e in _events[:l]]}
+    return [e.dict() for e in _events[:l]]
+
+
+async def _broadcast_event(event: Dict[str, Any]) -> None:
+    """Publish an event to all active SSE subscribers."""
+    if not _subscribers:
+        return
+    async with _subscriber_lock:
+        stale: list[asyncio.Queue[Dict[str, Any]]] = []
+        for q in list(_subscribers):
+            try:
+                q.put_nowait(event)
+            except asyncio.QueueFull:
+                stale.append(q)
+        for q in stale:
+            _subscribers.discard(q)
+
+
+async def _event_stream(request: Request):
+    """Yield a server-sent-event stream of demo activity."""
+    queue: asyncio.Queue[Dict[str, Any]] = asyncio.Queue(maxsize=100)
+    async with _subscriber_lock:
+        _subscribers.add(queue)
+
+    # Send an initial snapshot so the UI renders immediately
+    initial_events = await _get_recent_events(limit=6)
+    yield _format_sse({"type": "snapshot", "events": initial_events})
+
+    try:
+        while True:
+            if await request.is_disconnected():
+                break
+            try:
+                event = await asyncio.wait_for(queue.get(), timeout=20)
+                yield _format_sse({"type": "activity", "event": event})
+            except asyncio.TimeoutError:
+                # Heartbeat to keep the connection alive
+                yield ":keep-alive\n\n"
+    finally:
+        async with _subscriber_lock:
+            _subscribers.discard(queue)
+
+
+def _format_sse(payload: Dict[str, Any]) -> str:
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+@router.get("/demo/stream")
+async def stream_demos(request: Request) -> StreamingResponse:
+    """Server-sent event stream of demo activity for the landing page."""
+    generator = _event_stream(request)
+    return StreamingResponse(generator, media_type="text/event-stream")

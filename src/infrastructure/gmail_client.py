@@ -7,19 +7,10 @@ instead of raw API responses. Implements IGmailClient interface.
 
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import contextlib
+import importlib.util
 import os.path
 import pickle
-
-try:
-    from google.oauth2.credentials import Credentials
-    from google_auth_oauthlib.flow import InstalledAppFlow
-    from google.auth.transport.requests import Request
-    from googleapiclient.discovery import build
-except ImportError:
-    raise ImportError(
-        "Gmail client requires Google API packages. Install with:\n"
-        "pip install google-auth-oauthlib google-auth-httplib2 google-api-python-client"
-    )
 
 from src.domain.email_thread import (
     EmailMessage,
@@ -30,6 +21,27 @@ from src.domain.email_thread import (
 )
 from src.domain.gmail_interfaces import IGmailClient
 
+
+def _google_packages_available() -> bool:
+    with contextlib.suppress(ModuleNotFoundError):
+        return importlib.util.find_spec("google.oauth2.credentials") is not None
+    return False
+
+
+if _google_packages_available():
+    from google.oauth2.credentials import Credentials
+    from google_auth_oauthlib.flow import InstalledAppFlow
+    from google.auth.transport.requests import Request
+    from googleapiclient.discovery import build
+
+    _GOOGLE_PACKAGES_AVAILABLE = True
+else:  # pragma: no cover - executed only when dependencies missing
+    Credentials = None  # type: ignore[assignment]
+    InstalledAppFlow = None  # type: ignore[assignment]
+    Request = None  # type: ignore[assignment]
+    build = None  # type: ignore[assignment]
+
+    _GOOGLE_PACKAGES_AVAILABLE = False
 
 # Gmail API scopes - modify allows read/write but not permanent delete
 SCOPES = [
@@ -58,6 +70,12 @@ class GmailClient(IGmailClient):
             credentials_path: Path to OAuth credentials JSON
             token_path: Path to store authentication token
         """
+        if not _GOOGLE_PACKAGES_AVAILABLE:
+            raise ImportError(
+                "Gmail client requires Google API packages. Install with:\n"
+                "pip install google-auth-oauthlib google-auth-httplib2 google-api-python-client"
+            )
+
         self.credentials_path = credentials_path
         self.token_path = token_path
         self.service = None

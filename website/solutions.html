@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Soft Systems Studio | Solutions</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-black text-white">
+  <header class="container mx-auto px-4 py-6 flex justify-between items-center">
+    <div class="flex items-center space-x-3">
+      <img src="assets/S Logo - Black Blackground.png" alt="Soft Systems Studio Logo" class="h-10 w-10">
+      <span class="text-2xl font-bold text-[#c0ff6b]">Soft Systems Studio</span>
+    </div>
+    <nav class="hidden md:flex space-x-6 text-gray-300">
+      <a href="/index.html" class="hover:text-white">Home</a>
+      <a href="/solutions.html" class="text-white font-semibold">Solutions</a>
+      <a href="/pricing.html" class="hover:text-white">Pricing</a>
+      <a href="/platform.html" class="hover:text-white">Platform</a>
+      <a href="/api/docs" class="hover:text-white">API Docs</a>
+    </nav>
+    <a href="/api/v1/auth/signup" class="hidden md:inline-flex bg-[#c0ff6b] text-black font-semibold px-4 py-2 rounded-lg hover:bg-[#a3e048]">Talk to sales</a>
+  </header>
+
+  <main class="container mx-auto px-4 pb-20">
+    <section class="text-center py-12">
+      <p class="text-sm uppercase tracking-wide text-gray-400">Solutions</p>
+      <h1 class="text-4xl md:text-5xl font-extrabold mb-4">AI agents built for real workflows</h1>
+      <p class="text-lg text-gray-400 max-w-3xl mx-auto">From inbound support to revenue operations and back-office automation, we deliver production-ready agents that plug into your stack with monitoring, guardrails, and human handoff.</p>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-2xl mb-2">💬</div>
+        <h2 class="text-2xl font-semibold mb-2">Customer & member support</h2>
+        <p class="text-gray-400 mb-4">Context-aware agents that resolve tickets, summarize conversations, and escalate with full transcripts.</p>
+        <ul class="space-y-2 text-gray-400 text-sm">
+          <li>• Integrations: Zendesk, Intercom, Slack, email</li>
+          <li>• Guardrails: policy blocks, tone checks, approval steps</li>
+          <li>• Observability: conversation tracing + feedback loops</li>
+        </ul>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-2xl mb-2">📅</div>
+        <h2 class="text-2xl font-semibold mb-2">Scheduling & lead capture</h2>
+        <p class="text-gray-400 mb-4">Book meetings, qualify leads, and sync availability across calendars with automated reminders.</p>
+        <ul class="space-y-2 text-gray-400 text-sm">
+          <li>• Calendar + CRM sync with audit logs</li>
+          <li>• Adaptive flows for inbound/outbound motions</li>
+          <li>• Conversion reporting and milestone alerts</li>
+        </ul>
+      </div>
+      <div class="bg-gray-900 border border-gray-800 rounded-xl p-6">
+        <div class="text-2xl mb-2">📊</div>
+        <h2 class="text-2xl font-semibold mb-2">Operations & data automation</h2>
+        <p class="text-gray-400 mb-4">Extract, transform, and route structured data with deterministic checks before updates land in your systems.</p>
+        <ul class="space-y-2 text-gray-400 text-sm">
+          <li>• Connected to sheets, warehouses, and webhooks</li>
+          <li>• Validation rules and fallback manual review</li>
+          <li>• SLA-aware retries with alerting</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="mt-16 bg-gradient-to-r from-gray-900 to-gray-800 border border-gray-700 rounded-2xl p-8 flex flex-col md:flex-row items-center md:items-start gap-8">
+      <div class="md:w-2/3">
+        <p class="text-sm uppercase tracking-wide text-gray-400 mb-2">Delivery</p>
+        <h3 class="text-3xl font-bold mb-3">Production playbooks included</h3>
+        <ul class="space-y-3 text-gray-300">
+          <li>✅ Requirements workshops to define intents, data contracts, and safety checks</li>
+          <li>✅ Staging environments with demo agents and canned scenarios for approvals</li>
+          <li>✅ Runbooks for incident response, monitoring, and model updates</li>
+          <li>✅ KPI dashboards tied to your CRM, support desk, or billing data</li>
+        </ul>
+      </div>
+      <div class="md:w-1/3 bg-black/40 border border-gray-700 rounded-xl p-6">
+        <h4 class="text-xl font-semibold mb-3">See it in action</h4>
+        <p class="text-gray-400 mb-4">Jump into the live demo agent to watch real-time activity and capture ideas for your rollout.</p>
+        <div class="space-y-3">
+          <a href="/index.html#demo" class="block text-center bg-[#c0ff6b] text-black font-semibold px-4 py-3 rounded-lg hover:bg-[#a3e048]">Try the demo agents</a>
+          <a href="mailto:hello@softsystemsstudio.com" class="block text-center border border-gray-600 text-gray-200 px-4 py-3 rounded-lg hover:border-gray-400">Book a build sprint</a>
+        </div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
