@@ -4,6 +4,7 @@ set -euo pipefail
 
 # Build output directory (do not modify source files in-place)
 OUT_DIR="build"
+SOURCE_DIR="website"
 mkdir -p "$OUT_DIR"
 
 # Generate config.js into build directory from environment variables at build time
@@ -16,8 +17,8 @@ EOF
 
 echo "✅ Generated $OUT_DIR/config.js with Web3Forms key"
 
-# Copy index.html into build directory and inject DEMO_KEY into the copy if provided
-cp index.html "$OUT_DIR/index.html"
+# Copy static site into build directory and inject DEMO_KEY into the copy if provided
+cp "$SOURCE_DIR"/*.html "$OUT_DIR/"
 
 if [ -n "${DEMO_KEY:-}" ]; then
     echo "🔐 Injecting DEMO_KEY into $OUT_DIR/index.html"
