@@ -348,58 +348,29 @@ open htmlcov/index.html
 
 ## Documentation
 
-### Phase Summaries
-- `docs/PHASE_2_SUMMARY.md` - Initial implementation
-- `docs/PHASE_3_SUMMARY.md` - Domain models and use cases
-- `docs/SMOKE_TEST_RESULTS.md` - Smoke test results (10/10 passing)
-- `docs/PHASE_6_E2E_WORKFLOW.md` - Workflow implementation
-
-### Architecture
 - `docs/GMAIL_CLEANUP_ARCHITECTURE.md` - System design
-- `docs/GMAIL_SETUP.md` - Gmail API setup (coming in Phase 7)
+- `docs/GMAIL_SETUP.md` - Gmail API setup
 - `docs/DEVELOPMENT.md` - Development guide
-
----
-
-## Roadmap
-
-### Phase 7: Real Gmail API Integration (Next)
-- Set up test Gmail account
-- Integrate real GmailClient with OAuth
-- Wire rate limiting into use cases
-- Performance testing with large mailboxes
-- Error handling for API failures
-
-### Phase 8: Production Deployment
-- Security review (OAuth tokens, credentials)
-- Operations guide (setup, monitoring)
-- Staging environment deployment
-- Production rollout plan
-
-### Phase 9: Advanced Features
-- Multi-user support
-- Scheduled cleanup jobs
-- Web dashboard for monitoring
-- LLM-powered rule suggestions
+- `docs/OPERATIONS_GUIDE.md` - Operational runbooks
 
 ---
 
 ## FAQ
 
 ### Q: Is this safe to use?
-**A**: The core domain logic is production-ready with safety guarantees. Phase 7 will add real Gmail API integration with proper error handling and rate limiting.
+**A**: The core domain logic is production-ready with safety guarantees. Real Gmail API integration includes error handling and rate limiting guidance in the setup docs.
 
 ### Q: Can I use this now?
-**A**: Yes for testing with MockGmailClient. Real Gmail API integration coming in Phase 7.
+**A**: Yes for testing with MockGmailClient. Enable the real Gmail API by following the OAuth setup steps in `docs/GMAIL_SETUP.md`.
 
 ### Q: Will it delete important emails?
 **A**: No. Safety guardrails at the domain level protect starred and important messages. This cannot be bypassed.
 
 ### Q: What if I make a mistake?
-**A**: Always use dry-run mode first. All actions are logged with unique run IDs for audit trail. Phase 7 will add undo capabilities.
+**A**: Always use dry-run mode first. All actions are logged with unique run IDs for audit trail.
 
 ### Q: How do I get Gmail credentials?
-**A**: Phase 7 documentation will include complete OAuth setup instructions.
+**A**: See `docs/GMAIL_SETUP.md` for complete OAuth setup instructions.
 
 ### Q: Can I customize the cleanup rules?
 **A**: Yes! Use CleanupRuleBuilder for full flexibility. Create any combination of conditions and actions.

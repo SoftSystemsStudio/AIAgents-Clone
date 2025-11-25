@@ -109,7 +109,7 @@ railway variables set DATABASE_URL=your-db-url
 
 ### Update Landing Page API URL
 
-After deploying API, update `landing.html`:
+After deploying API, update `website/landing.html`:
 
 ```javascript
 // Change this line in the form submission script:
@@ -137,7 +137,7 @@ const response = await fetch('https://your-api.railway.app/api/v1/contact', {
 ## Post-Deployment Checklist
 
 - [ ] Test contact form on live site
-- [ ] Update API URL in landing.html
+- [ ] Update API URL in `website/landing.html`
 - [ ] Add custom domain
 - [ ] Set up Google Analytics
 - [ ] Test mobile responsiveness

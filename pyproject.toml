@@ -135,6 +135,8 @@ markers = [
     "unit: Unit tests",
     "integration: Integration tests",
     "smoke: Smoke tests for production readiness",
+    "asyncio: asyncio-based tests",
+    "e2e: End-to-end workflow tests",
     "slow: Slow running tests",
 ]
 

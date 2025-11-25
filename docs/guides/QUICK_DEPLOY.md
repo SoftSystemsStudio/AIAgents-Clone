@@ -34,7 +34,7 @@
 
 Once your API backend is deployed (see Railway instructions in DEPLOYMENT.md), update the contact form:
 
-1. Open `landing.html`
+1. Open `website/landing.html`
 2. Find this line (near bottom of file):
 ```javascript
 const response = await fetch('http://localhost:8000/api/v1/contact', {
