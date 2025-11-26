@@ -311,6 +311,7 @@ async def health_check():
     database_repo = _dependencies.get("database_repo")
     qdrant_base_url = _qdrant_base_url()
 
+    
     # Check observability health
     obs_health = await observability.health_check()
     redis_health = await check_redis_health(
@@ -326,6 +327,8 @@ async def health_check():
         timeout=config.vector_store.qdrant_timeout_seconds,
     )
 
+    supabase_health = await check_supabase_health(config.supabase.supabase_url)
+    
     return HealthResponse(
         status="healthy",
         version="0.1.0",
@@ -338,6 +341,8 @@ async def health_check():
             "redis": redis_health,
             "supabase": supabase_health,
             "qdrant": qdrant_health,
+            "redis": redis_health,
+            "supabase": supabase_health,
         },
     )
 

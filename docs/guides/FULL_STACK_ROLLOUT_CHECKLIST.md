@@ -26,6 +26,9 @@ You already populated `.env` with the Supabase, Upstash Redis, Sentry, SendGrid,
 4. Start the API for a smoke test: `uvicorn src.api.rest:app --reload --host 0.0.0.0 --port 8000` (or rely on the Compose-managed `api` service).
 5. Check health/metrics:
    - `curl http://localhost:8000/health` (expects `"status": "healthy"` and shows Supabase/Redis/Postgres/Qdrant availability).
+4. Start the API for a smoke test: `uvicorn src.api.rest:app --reload --host 0.0.0.0 --port 8000`.
+5. Check health/metrics:
+   - `curl http://localhost:8000/health` (expects `"status": "healthy"` and shows Supabase/Redis availability).
    - If metrics enabled, `curl http://localhost:9090/metrics` (or whatever `METRICS_PORT` you set).
 
 ## 3) Prepare deployment targets
@@ -40,6 +43,10 @@ You already populated `.env` with the Supabase, Upstash Redis, Sentry, SendGrid,
   - Copy REST credentials to `.env`; if using direct Redis protocol, allowlisted regions match your Render region.
 - **Qdrant (vector store):**
   - If using Render or another host, set `QDRANT_HOST`, `QDRANT_PORT`, optional `QDRANT_API_KEY`, and `QDRANT_USE_HTTPS` so the `/health` endpoint can report its status. Keep Qdrant reachable from the API container or service.
+  - Enable Auth providers and copy `SUPABASE_JWT_SECRET` into `.env` for backend JWT verification middleware you add later.
+  - Create Storage bucket(s) with RLS policies tied to auth user IDs.
+- **Upstash Redis:**
+  - Copy REST credentials to `.env`; if using direct Redis protocol, allowlisted regions match your Render region.
 - **Sentry:**
   - Add the project DSN to Render environment variables; configure alerts for 5xx spikes.
 
