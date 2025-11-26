@@ -28,8 +28,8 @@ jobs:
 
       - name: Run Lighthouse and enforce thresholds
         run: |
-          npx -y lighthouse http://127.0.0.1:8080 --output=json --output-path=./lighthouse-report.json --quiet || true
-          echo "Lighthouse report saved to lighthouse-report.json"
+          npx -y lighthouse http://127.0.0.1:8080 --output=json --output-html --output-path=./lighthouse-report.json --quiet || true
+          echo "Lighthouse report saved to lighthouse-report.json (JSON+HTML)"
           # Read scores (0..1) and fail if below thresholds
           PERF=$(jq '.categories.performance.score' lighthouse-report.json)
           ACCESS=$(jq '.categories.accessibility.score' lighthouse-report.json)
@@ -45,11 +45,26 @@ jobs:
             exit 2
           fi
 
+      - name: Generate badge and commit (if changed)
+        run: |
+          python3 tools/generate_lighthouse_badge.py lighthouse-report.json badges/lighthouse.svg
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add badges/lighthouse.svg
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(ci): update lighthouse badge" || true
+            git push origin HEAD:main || true
+          else
+            echo "Badge unchanged"
+          fi
+
       - name: Upload Lighthouse report
         uses: actions/upload-artifact@v4
         with:
           name: lighthouse-report
-          path: lighthouse-report.json
+          path: |
+            lighthouse-report.json
+            lighthouse-report.html
 
       - name: Stop server
         if: always()

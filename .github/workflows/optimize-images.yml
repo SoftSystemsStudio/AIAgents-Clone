@@ -24,14 +24,13 @@ jobs:
         run: |
           npx -y imagemin-cli "assets/*.{png,jpg,jpeg,svg,gif}" --out-dir=assets/ || true
 
-      - name: Commit optimized images
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add assets || true
-          if ! git diff --cached --quiet; then
-            git commit -m "chore(images): optimize assets on push" || true
-            git push origin HEAD:main || true
-          else
-            echo "No image changes to commit"
-          fi
+      - name: Create a pull request with optimized images
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(images): optimize assets"
+          branch: "image-optimization-${{ github.run_id }}"
+          title: "chore(images): optimize assets"
+          body: |
+            This PR contains automatically optimized images produced by the CI image-optimization workflow.
+          labels: "automated,images"
