@@ -82,6 +82,23 @@ cp .env.example .env
 
 # Start infrastructure services
 make docker-up
+
+### Run the API with Docker Compose
+
+When you prefer containers, use the built-in image and compose targets:
+
+```bash
+# Build the API image (installs dependencies)
+docker compose build api
+
+# Bring up the API alongside Postgres, Redis, and Qdrant
+cp .env.example .env  # ensure secrets are present
+docker compose up api postgres redis qdrant
+
+# API will be available at http://localhost:8000
+# Override service hosts for containers by uncommenting the container-friendly
+# values at the bottom of .env.example before copying it.
+```
 ```
 
 ### Simple Agent Example
@@ -133,6 +150,8 @@ curl -X POST http://localhost:8000/gmail/cleanup/analyze \
 ## 📚 Documentation & assets
 
 - **Guides & Playbooks:** See `docs/guides/` for deployment, quickstart, and enablement guides (moved here to keep the repo root tidy).
+- **Free-tier stack blueprint:** `docs/guides/FREE_STACK_ENABLEMENT.md` outlines recommended providers (Vercel, Render, Supabase, Upstash, Sentry) and environment variables already supported in this repo.
+- **Full-stack rollout checklist:** `docs/guides/FULL_STACK_ROLLOUT_CHECKLIST.md` gives the step-by-step to exercise every secret in `.env` and stand up the FastAPI + Next.js stack on free tiers.
 - **Marketing site:** Static pages live in `website/` (`index.html`, `solutions.html`, `pricing.html`, `platform.html`). Run `./build.sh` to package them into `build/` for deployment.
 - **Live demo telemetry:** The landing page consumes `/api/v1/demo/stream` (SSE) with a polling fallback for recent demo events. Keep this endpoint available in production for the on-page activity feed.
 - **Production readiness gaps:** See `docs/PRODUCTION_READINESS_GAPS.md` for the prioritized backlog to reach a multi-page, live-agent experience.
@@ -186,6 +205,11 @@ ANTHROPIC_API_KEY=sk-ant-...
 # Vector Database
 QDRANT_HOST=localhost
 QDRANT_PORT=6333
+QDRANT_USE_HTTPS=false
+
+# Optional
+QDRANT_API_KEY=
+QDRANT_TIMEOUT_SECONDS=10
 
 # Redis
 REDIS_HOST=localhost

@@ -28,10 +28,14 @@ class LLMProviderConfig(BaseSettings):
 
 class VectorStoreConfig(BaseSettings):
     """Configuration for vector databases."""
-    
+
     qdrant_host: str = Field("localhost", description="Qdrant host")
     qdrant_port: int = Field(6333, description="Qdrant port")
     qdrant_api_key: Optional[str] = Field(None, description="Qdrant API key")
+    qdrant_use_https: bool = Field(False, description="Use HTTPS when connecting to Qdrant")
+    qdrant_timeout_seconds: float = Field(
+        10.0, description="Request timeout when talking to Qdrant"
+    )
     
     chroma_persist_dir: Optional[str] = Field(None, description="ChromaDB persist directory")
     
@@ -45,18 +49,42 @@ class VectorStoreConfig(BaseSettings):
 
 class RedisConfig(BaseSettings):
     """Configuration for Redis."""
-    
+
+    redis_url: Optional[str] = Field(
+        None, description="Full Redis URL (supports rediss:// for Upstash)",
+    )
     redis_host: str = Field("localhost", description="Redis host")
     redis_port: int = Field(6379, description="Redis port")
     redis_password: Optional[str] = Field(None, description="Redis password")
     redis_db: int = Field(0, description="Redis database number")
-    
+    redis_ssl: bool = Field(False, description="Enable SSL/TLS for Redis")
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
     )
+
+    def connection_kwargs(self) -> dict:
+        """Return connection kwargs compatible with redis-py."""
+
+        # Prefer URL when provided (e.g., Upstash rediss:// URLs)
+        if self.redis_url:
+            return {
+                "url": self.redis_url,
+                "ssl": self.redis_url.startswith("rediss://") or self.redis_ssl,
+                "decode_responses": True,
+            }
+
+        return {
+            "host": self.redis_host,
+            "port": self.redis_port,
+            "password": self.redis_password,
+            "db": self.redis_db,
+            "ssl": self.redis_ssl,
+            "decode_responses": True,
+        }
 
 
 class DatabaseConfig(BaseSettings):
@@ -97,12 +125,24 @@ class DatabaseConfig(BaseSettings):
 
 class ObservabilityConfig(BaseSettings):
     """Configuration for observability."""
-    
+
     log_level: str = Field("INFO", description="Log level")
     enable_tracing: bool = Field(False, description="Enable distributed tracing")
     otel_exporter_endpoint: Optional[str] = Field(
         None,
         description="OpenTelemetry exporter endpoint",
+    )
+    sentry_dsn: Optional[str] = Field(
+        None, description="Sentry DSN for error reporting",
+    )
+    sentry_environment: Optional[str] = Field(
+        None, description="Sentry environment tag (e.g., production)",
+    )
+    sentry_traces_sample_rate: float = Field(
+        0.05,
+        description="Sample rate for Sentry tracing (0.0 - 1.0)",
+        ge=0.0,
+        le=1.0,
     )
     enable_metrics: bool = Field(True, description="Enable Prometheus metrics")
     metrics_port: int = Field(9090, description="Metrics server port")
@@ -131,6 +171,68 @@ class AgentConfig(BaseSettings):
         description="Memory limit per agent execution",
     )
     
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+
+class SupabaseConfig(BaseSettings):
+    """Configuration for Supabase services (Auth, DB, Storage)."""
+
+    supabase_url: Optional[str] = Field(None, description="Supabase project URL")
+    supabase_service_role_key: Optional[str] = Field(
+        None, description="Supabase service role key",
+    )
+    supabase_anon_key: Optional[str] = Field(None, description="Supabase anon key")
+    supabase_jwt_secret: Optional[str] = Field(
+        None, description="Supabase JWT secret for server-side verification",
+    )
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+
+class EmailConfig(BaseSettings):
+    """Configuration for outbound email providers."""
+
+    sendgrid_api_key: Optional[str] = Field(None, description="SendGrid API key")
+    resend_api_key: Optional[str] = Field(None, description="Resend API key")
+    admin_email: Optional[str] = Field(None, description="Admin/notification email")
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",
+    )
+
+
+class AuthConfig(BaseSettings):
+    """Configuration for API authentication."""
+
+    jwt_secret_key: str = Field(
+        "CHANGE_THIS_IN_PRODUCTION_USE_LONG_RANDOM_STRING",
+        description="Secret for issuing internal JWTs",
+    )
+    jwt_algorithm: str = Field("HS256", description="JWT signing algorithm")
+    access_token_expire_minutes: int = Field(
+        60 * 24, description="Access token expiry in minutes",
+    )
+    supabase_jwt_secret: Optional[str] = Field(
+        None,
+        description=(
+            "Supabase JWT secret for verifying tokens issued by Supabase Auth; "
+            "falls back to jwt_secret_key when not set"
+        ),
+    )
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
@@ -175,6 +277,9 @@ class AppConfig(BaseSettings):
     redis: RedisConfig = Field(default_factory=RedisConfig)
     database: DatabaseConfig = Field(default_factory=DatabaseConfig)
     observability: ObservabilityConfig = Field(default_factory=ObservabilityConfig)
+    supabase: SupabaseConfig = Field(default_factory=SupabaseConfig)
+    email: EmailConfig = Field(default_factory=EmailConfig)
+    auth: AuthConfig = Field(default_factory=AuthConfig)
     agent: AgentConfig = Field(default_factory=AgentConfig)
     rate_limit: RateLimitConfig = Field(default_factory=RateLimitConfig)
     
@@ -205,10 +310,16 @@ class AppConfig(BaseSettings):
                 raise ValueError(
                     "Production requires at least one LLM provider API key"
                 )
-            
+
             # Require observability in production
             if not self.observability.enable_metrics:
                 raise ValueError("Metrics must be enabled in production")
+
+            # Require Supabase JWT secret when Supabase URL configured
+            if self.supabase.supabase_url and not self.supabase.supabase_jwt_secret:
+                raise ValueError(
+                    "SUPABASE_JWT_SECRET is required in production when SUPABASE_URL is set"
+                )
 
 
 # Global config instance (lazy loaded)
@@ -229,6 +340,9 @@ def get_config() -> AppConfig:
             redis=RedisConfig(),
             database=DatabaseConfig(),
             observability=ObservabilityConfig(),
+            supabase=SupabaseConfig(),
+            email=EmailConfig(),
+            auth=AuthConfig(),
             agent=AgentConfig(),
             rate_limit=RateLimitConfig(),
         )
