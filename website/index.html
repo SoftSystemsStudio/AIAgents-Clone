@@ -90,9 +90,30 @@
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-20px); }
         }
+
+        /* Accessibility: visible focus states for keyboard users */
+        a:focus, button:focus, input:focus {
+            outline: 3px solid rgba(26,77,255,0.9);
+            outline-offset: 2px;
+        }
+
+        /* Skip link visible when focused */
+        #skip-link:focus {
+            position: static;
+            width: auto;
+            height: auto;
+            left: 1rem;
+            top: 1rem;
+            background: #FFFFFF;
+            color: #000000;
+            padding: 8px 12px;
+            border-radius: 6px;
+            z-index: 9999;
+        }
     </style>
 </head>
 <body class="bg-black text-white">
+    <a class="sr-only" href="#main-content" style="position:absolute;left:-9999px;top:auto;width:1px;height:1px;overflow:hidden;" id="skip-link">Skip to content</a>
 
     <!-- Floating Notification for Social Proof -->
     <div id="demo-notification" class="fixed bottom-24 left-6 bg-gray-900 border border-lime-500/30 rounded-lg p-4 shadow-2xl transform translate-y-32 transition-transform duration-500 z-40 max-w-sm hidden md:block">
@@ -119,32 +140,31 @@
         🚀 Limited Time: Free consultation + 20% off your first automation project! <a href="#pricing" class="underline hover:opacity-80 font-semibold text-black">Book now &rarr;</a>
     </div>
 
-    <header class="container mx-auto px-4 py-4 flex justify-between items-center">
-            <div class="flex items-center space-x-3">
-            <img src="assets/S Logo - Black Blackground.png" alt="Soft Systems Studio Logo" class="h-10 w-10">
+    <header class="container mx-auto px-4 py-4 flex justify-between items-center" role="banner">
+        <div class="flex items-center space-x-3">
+            <img src="assets/S Logo - Black Blackground.png" alt="Soft Systems Studio logo" class="h-10 w-10" />
             <span class="text-2xl font-bold text-[#c0ff6b]">Soft Systems Studio</span>
         </div>
-        <nav class="hidden md:flex space-x-8 text-gray-400">
+        <nav class="hidden md:flex space-x-8 text-gray-400" role="navigation" aria-label="Primary Navigation">
             <a href="/index.html" aria-current="page" class="hover:text-white transition">Home</a>
             <a href="/solutions.html" class="hover:text-white transition">Solutions</a>
             <a href="/pricing.html" class="hover:text-white transition">Pricing</a>
             <a href="/platform.html" class="hover:text-white transition">Platform</a>
             <a href="#features" class="hover:text-white transition">Features</a>
             <a href="#demo" class="hover:text-white transition">Try Demo</a>
-            <a href="#pricing" class="hover:text-white transition">Pricing</a>
             <a href="#how-it-works" class="hover:text-white transition">How it works</a>
             <a href="/api/docs" class="hover:text-white transition">API Docs</a>
         </nav>
         <div class="flex items-center space-x-4">
-            <a href="/api/v1/auth/login" class="text-gray-400 hover:text-white transition">Log in</a>
-            <a href="/api/v1/auth/signup" class="text-black px-6 py-2 rounded-lg transition flex items-center space-x-2 font-semibold bg-[#c0ff6b] hover:bg-[#a3e048]">
+            <a href="/api/v1/auth/login" class="text-gray-400 hover:text-white transition" aria-label="Log in">Log in</a>
+            <a href="/api/v1/auth/signup" id="primary-cta" class="text-black px-6 py-2 rounded-lg transition flex items-center space-x-2 font-semibold bg-[#c0ff6b] hover:bg-[#a3e048]" aria-label="Start free trial">
                 <span>Start Free Trial</span>
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
             </a>
         </div>
     </header>
 
-    <main class="container mx-auto px-4 py-16 flex flex-col md:flex-row items-center justify-between min-h-[calc(100vh-120px)]">
+    <main id="main-content" class="container mx-auto px-4 py-16 flex flex-col md:flex-row items-center justify-between min-h-[calc(100vh-120px)]" role="main">
         <div class="md:w-1/2 text-center md:text-left mb-10 md:mb-0">
             <div class="inline-block px-4 py-1 rounded-full text-sm mb-6 bg-[#c0ff6b]/20 text-[#c0ff6b] border border-[#c0ff6b]/30">
                 ✨ Trusted by 500+ businesses
@@ -182,7 +202,7 @@
         </div>
 
         <div class="md:w-1/2 flex justify-center items-center relative">
-            <div class="glowing-mail w-96 h-96"></div>
+            <img src="assets/hero-illustration.svg" alt="Abstract network of connected nodes illustrating adaptive AI systems" class="w-96 h-96" />
         </div>
     </main>
 
