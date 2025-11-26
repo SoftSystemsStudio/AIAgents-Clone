@@ -34,6 +34,8 @@ class RedisMessageQueue(IMessageQueue):
         password: Optional[str] = None,
         db: int = 0,
         decode_responses: bool = True,
+        url: Optional[str] = None,
+        ssl: bool = False,
     ):
         """
         Initialize Redis message queue.
@@ -52,15 +54,38 @@ class RedisMessageQueue(IMessageQueue):
                 "Redis package not installed. Install with: pip install redis"
             )
 
-        self.redis = aioredis.Redis(
-            host=host,
-            port=port,
-            password=password,
-            db=db,
-            decode_responses=decode_responses,
-        )
+        if url:
+            self.redis = aioredis.from_url(
+                url,
+                ssl=ssl,
+                decode_responses=decode_responses,
+            )
+        else:
+            self.redis = aioredis.Redis(
+                host=host,
+                port=port,
+                password=password,
+                db=db,
+                decode_responses=decode_responses,
+                ssl=ssl,
+            )
         self._pubsub = None
         self._subscriptions: Dict[str, asyncio.Task] = {}
+
+    @classmethod
+    def from_config(cls, redis_config) -> "RedisMessageQueue":
+        """Build a message queue from RedisConfig (supports Upstash URLs)."""
+
+        kwargs = redis_config.connection_kwargs()
+        return cls(
+            host=kwargs.get("host", "localhost"),
+            port=kwargs.get("port", 6379),
+            password=kwargs.get("password"),
+            db=kwargs.get("db", 0),
+            decode_responses=kwargs.get("decode_responses", True),
+            url=kwargs.get("url"),
+            ssl=kwargs.get("ssl", False),
+        )
 
     async def publish(
         self,

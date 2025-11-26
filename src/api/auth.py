@@ -1,13 +1,12 @@
 """
 API Authentication - JWT tokens and customer verification.
 
-Provides secure authentication for the Gmail cleanup API.
+Authentication helpers for JWT and Supabase-backed flows.
 """
 
 from datetime import datetime, timedelta
 from typing import Optional
 from uuid import UUID
-import os
 
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
@@ -16,14 +15,23 @@ import bcrypt
 from pydantic import BaseModel
 
 from src.domain.customer import Customer, CustomerStatus
-
-# Security configuration
-SECRET_KEY = os.getenv("JWT_SECRET_KEY", "CHANGE_THIS_IN_PRODUCTION_USE_LONG_RANDOM_STRING")
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
+from src.config import get_config
 
 # HTTP Bearer token security
 security = HTTPBearer()
+
+
+def _auth_config():
+    return get_config().auth
+
+
+def _internal_secret_key() -> str:
+    return _auth_config().jwt_secret_key
+
+
+def _supabase_secret_key() -> str:
+    auth = _auth_config()
+    return auth.supabase_jwt_secret or auth.jwt_secret_key
 
 
 class TokenData(BaseModel):
@@ -55,6 +63,16 @@ class TokenResponse(BaseModel):
     customer: dict
 
 
+class SupabaseUser(BaseModel):
+    """Parsed Supabase JWT payload."""
+
+    user_id: str
+    email: Optional[str] = None
+    role: Optional[str] = None
+    aud: Optional[str] = None
+    exp: datetime
+
+
 def hash_password(password: str) -> str:
     """Hash a password using bcrypt"""
     salt = bcrypt.gensalt()
@@ -81,10 +99,14 @@ def create_access_token(customer: Customer, expires_delta: Optional[timedelta] =
     Returns:
         JWT token string
     """
+    auth = _auth_config()
+
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+        expire = datetime.utcnow() + timedelta(
+            minutes=auth.access_token_expire_minutes
+        )
     
     to_encode = {
         "sub": str(customer.id),  # Subject (customer ID)
@@ -93,7 +115,11 @@ def create_access_token(customer: Customer, expires_delta: Optional[timedelta] =
         "exp": expire,
     }
     
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(
+        to_encode,
+        _internal_secret_key(),
+        algorithm=auth.jwt_algorithm,
+    )
     return encoded_jwt
 
 
@@ -117,7 +143,12 @@ def decode_token(token: str) -> TokenData:
     )
     
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        auth = _auth_config()
+        payload = jwt.decode(
+            token,
+            _internal_secret_key(),
+            algorithms=[auth.jwt_algorithm],
+        )
         customer_id: str = payload.get("sub")
         email: str = payload.get("email")
         plan_tier: str = payload.get("plan_tier")
@@ -130,6 +161,41 @@ def decode_token(token: str) -> TokenData:
             email=email,
             plan_tier=plan_tier,
             exp=datetime.fromtimestamp(payload.get("exp"))
+        )
+    except JWTError:
+        raise credentials_exception
+
+
+def decode_supabase_token(token: str) -> SupabaseUser:
+    """Decode and verify a Supabase-issued JWT token using the configured secret."""
+
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate Supabase credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    secret = _supabase_secret_key()
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Supabase JWT secret is not configured",
+        )
+
+    try:
+        auth = _auth_config()
+        payload = jwt.decode(token, secret, algorithms=[auth.jwt_algorithm])
+        user_id = payload.get("sub") or payload.get("user_id") or payload.get("id")
+        exp_value = payload.get("exp")
+        if not user_id or not exp_value:
+            raise credentials_exception
+
+        return SupabaseUser(
+            user_id=user_id,
+            email=payload.get("email"),
+            role=payload.get("role"),
+            aud=payload.get("aud"),
+            exp=datetime.fromtimestamp(exp_value),
         )
     except JWTError:
         raise credentials_exception
@@ -176,6 +242,15 @@ async def get_current_customer(
         )
     
     return customer
+
+
+async def get_supabase_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> SupabaseUser:
+    """Validate a Supabase-authenticated user via the Authorization bearer token."""
+
+    token = credentials.credentials
+    return decode_supabase_token(token)
 
 
 def require_paid_plan(customer: Customer = Depends(get_current_customer)) -> Customer:

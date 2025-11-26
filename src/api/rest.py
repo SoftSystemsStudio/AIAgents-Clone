@@ -12,10 +12,12 @@ from contextlib import asynccontextmanager
 from typing import List, Optional
 from uuid import UUID
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, status
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, HTMLResponse
 from pydantic import BaseModel, Field
+import sentry_sdk
+from sentry_sdk.integrations.fastapi import FastApiIntegration
 
 from src.config import get_config
 from src.domain.models import Agent, AgentCapability, AgentStatus, ExecutionResult
@@ -32,6 +34,12 @@ from src.application.use_cases import (
     ListAgentsUseCase,
     DeleteAgentUseCase,
 )
+from src.api.auth import SupabaseUser, get_supabase_user
+from src.infrastructure.healthchecks import (
+    check_redis_health,
+    check_supabase_health,
+)
+from src.infrastructure.message_queue import RedisMessageQueue
 
 # Import Gmail cleanup router
 from src.api.routers.gmail_cleanup import router as gmail_cleanup_router
@@ -50,7 +58,18 @@ async def lifespan(app: FastAPI):
     """
     # Startup
     config = get_config()
-    
+
+    # Initialize Sentry when configured
+    if config.observability.sentry_dsn:
+        sentry_sdk.init(
+            dsn=config.observability.sentry_dsn,
+            integrations=[FastApiIntegration()],
+            environment=(
+                config.observability.sentry_environment or config.app_env
+            ),
+            traces_sample_rate=config.observability.sentry_traces_sample_rate,
+        )
+
     # Initialize observability
     if config.observability.enable_metrics:
         observability = PrometheusObservability(
@@ -79,6 +98,18 @@ async def lifespan(app: FastAPI):
         agent_repository=agent_repo,
         observability=observability,
     )
+
+    # Initialize Redis message queue (optional if Redis is not configured)
+    message_queue = None
+    try:
+        message_queue = RedisMessageQueue.from_config(config.redis)
+        observability.log("info", "Redis message queue initialized")
+    except Exception as exc:  # pragma: no cover - defensive logging only
+        observability.log(
+            "warning",
+            "Redis message queue unavailable",
+            {"error": str(exc)},
+        )
     
     # Store in global dependencies
     _dependencies.update({
@@ -88,6 +119,7 @@ async def lifespan(app: FastAPI):
         "agent_repo": agent_repo,
         "tool_registry": tool_registry,
         "orchestrator": orchestrator,
+        "message_queue": message_queue,
     })
     
     observability.log("info", "API server initialized successfully")
@@ -177,11 +209,19 @@ class ExecutionResultResponse(BaseModel):
 
 class HealthResponse(BaseModel):
     """Response model for health checks."""
-    
+
     status: str
     version: str
     environment: str
     services: dict
+
+
+class SupabaseProfileResponse(BaseModel):
+    """Response model for Supabase-authenticated user details."""
+
+    user_id: str
+    email: Optional[str] = None
+    role: Optional[str] = None
 
 
 # API Endpoints
@@ -207,9 +247,14 @@ async def health_check():
     """
     config = _dependencies["config"]
     observability = _dependencies["observability"]
+    message_queue = _dependencies.get("message_queue")
     
     # Check observability health
     obs_health = await observability.health_check()
+    redis_health = await check_redis_health(
+        message_queue.redis if message_queue else None
+    )
+    supabase_health = await check_supabase_health(config.supabase.supabase_url)
     
     return HealthResponse(
         status="healthy",
@@ -219,7 +264,20 @@ async def health_check():
             "observability": obs_health,
             "llm_provider": "operational",
             "agent_repository": "operational",
+            "redis": redis_health,
+            "supabase": supabase_health,
         },
+    )
+
+
+@app.get("/auth/supabase/me", response_model=SupabaseProfileResponse, tags=["Auth"])
+async def supabase_me(user: SupabaseUser = Depends(get_supabase_user)):
+    """Return the Supabase user extracted from a bearer token."""
+
+    return SupabaseProfileResponse(
+        user_id=user.user_id,
+        email=user.email,
+        role=user.role,
     )
 
 
