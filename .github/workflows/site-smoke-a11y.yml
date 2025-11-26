@@ -33,7 +33,6 @@ jobs:
 
       - name: Optimize SVGs and images
         run: |
-          # optimize SVGs with svgo and raster images with imagemin
           npx -y svgo "assets/*.svg" || true
           npx -y imagemin-cli "assets/*.{png,jpg,jpeg,svg,gif}" --out-dir=assets/ || true
 
