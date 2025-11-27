@@ -1,0 +1,61 @@
+---
+name: Site Smoke + A11y
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Build static site
+        run: |
+          bash build.sh
+
+      - name: Run lightweight smoke check
+        run: |
+          python3 tools/smoke_check.py
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Optimize SVGs and images
+        run: |
+          npx -y svgo "assets/*.svg" || true
+          npx -y imagemin-cli "assets/*.{png,jpg,jpeg,svg,gif}" --out-dir=assets/ || true
+
+      - name: Run accessibility scan (pa11y) and fail on errors
+        run: |
+          npx http-server build -p 8080 --silent &
+          PID=$!
+          for i in {1..10}; do
+            if curl -sSf http://127.0.0.1:8080 >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          echo "Running pa11y (JSON) against http://127.0.0.1:8080"
+          npx -y pa11y http://127.0.0.1:8080 --reporter json > pa11y.json || true
+          ERRORS=$(jq '[.issues[] | select(.type=="error")] | length' pa11y.json)
+          echo "pa11y error count: $ERRORS"
+          if [ "$ERRORS" -gt 0 ]; then
+            echo "Accessibility errors found (pa11y). Failing job."
+            cat pa11y.json
+            kill $PID || true
+            exit 1
+          fi
+          echo "No pa11y errors found."
+          kill $PID || true

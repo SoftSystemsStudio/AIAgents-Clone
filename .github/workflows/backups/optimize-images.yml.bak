@@ -1,0 +1,38 @@
+---
+name: Optimize Images
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  optimize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: |
+          npm ci --no-audit --no-fund || true
+
+      - name: Optimize images
+        run: |
+          npx -y svgo "assets/*.svg" || true
+          npx -y imagemin-cli "assets/*.{png,jpg,jpeg,svg,gif}" --out-dir=assets/ || true
+
+      - name: Create a pull request with optimized images
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore(images): optimize assets"
+          branch: "image-optimization-${{ github.run_id }}"
+          title: "chore(images): optimize assets"
+          body: |
+            This PR contains automatically optimized images produced by the CI image-optimization workflow.
+          labels: automated,images

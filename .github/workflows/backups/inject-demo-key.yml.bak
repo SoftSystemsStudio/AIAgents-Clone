@@ -1,0 +1,122 @@
+---
+name: Build (inject DEMO_KEY)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.12'
+
+      - name: Make scripts executable
+        run: |
+          chmod +x ./scripts/inject_demo_key.py || true
+          chmod +x ./build.sh || true
+
+      - name: Run build.sh
+        env:
+          DEMO_KEY: ${{ secrets.DEMO_KEY }}
+          WEB3FORMS_ACCESS_KEY: ${{ secrets.WEB3FORMS_ACCESS_KEY }}
+        run: |
+          echo "Running build.sh (DEMO_KEY injected if provided in secrets)"
+          ./build.sh
+
+      - name: Validate DEMO_KEY injection
+        run: |
+          set -euo pipefail
+          if [ -z "${DEMO_KEY:-}" ]; then
+            echo "DEMO_KEY not provided; skipping injection validation"
+            exit 0
+          fi
+
+          if [ ! -f build/index.html ]; then
+            echo "build/index.html not found" >&2
+            exit 1
+          fi
+
+          if ! grep -q '<meta name="demo-key"' build/index.html; then
+            echo "meta[name=\"demo-key\"] not found in build/index.html" >&2
+            exit 1
+          fi
+
+      - name: Basic HTML smoke check
+        run: |
+          set -euo pipefail
+          if [ ! -f build/index.html ]; then
+            echo "build/index.html not found" >&2
+            exit 1
+          fi
+          grep -q "<html" build/index.html || (echo "<html> tag missing" >&2; exit 1)
+          grep -q "</body>" build/index.html || (echo "</body> tag missing" >&2; exit 1)
+          grep -q "</html>" build/index.html || (echo "</html> tag missing" >&2; exit 1)
+          echo "Basic HTML smoke check passed"
+
+      - name: HTML lint (html-validate)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - run: |
+          npm install -g html-validate@8
+          echo "Running html-validate against build/index.html"
+          html-validate --config none build/index.html || (echo "HTML validation failed" >&2; exit 1)
+        shell: bash
+
+      - name: Ensure DEMO_KEY present for production deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          DEMO_KEY: ${{ secrets.DEMO_KEY }}
+        run: |
+          if [ -z "${DEMO_KEY:-}" ]; then
+            echo "ERROR: DEMO_KEY secret is required for production deploy but is not set." >&2
+            exit 1
+          fi
+
+      - name: Upload built site artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site-build
+          path: |
+            build/**
+
+      - name: Deploy preview to Vercel (Pull Request) and comment
+        if: github.event_name == 'pull_request'
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "Installing Vercel CLI"
+          npm install -g vercel@28 >/dev/null
+          echo "Deploying preview to Vercel"
+          OUT=$(vercel --token "$VERCEL_TOKEN" --cwd build --confirm 2>&1)
+          echo "$OUT"
+          URL=$(printf "%s" "$OUT" | awk '/https?:\/\//{print $NF; exit}')
+          if [ -z "$URL" ]; then
+            echo "Failed to determine preview URL" >&2
+            exit 1
+          fi
+          echo "Preview URL: $URL"
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          BODY="Preview deployment available: $URL"
+          gh auth setup-token --token "$GITHUB_TOKEN" || true
+          gh pr comment "$PR_NUMBER" --body "$BODY"
+        shell: bash
+
+      - name: Deploy to Vercel (Production)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          vercel-args: '--prod'
+          working-directory: ./build

@@ -1,0 +1,32 @@
+---
+name: Deploy to Vercel
+
+# Note: set the following repository secrets in GitHub:
+# - VERCEL_TOKEN (personal token)
+# - VERCEL_ORG_ID
+# - VERCEL_PROJECT_ID
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  vercel-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build static site
+        run: |
+          bash build.sh
+
+      - name: Deploy to Vercel
+        uses: amondnet/vercel-action@v25  # community action
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-args: --prod
+          working-directory: .
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}

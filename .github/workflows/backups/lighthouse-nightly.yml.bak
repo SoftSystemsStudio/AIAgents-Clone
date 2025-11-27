@@ -1,0 +1,73 @@
+---
+name: Lighthouse Nightly
+
+on:
+  schedule:
+    - cron: '0 3 * * *'  # daily at 03:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build site
+        run: |
+          bash build.sh
+
+      - name: Serve site
+        run: |
+          npx http-server build -p 8080 --silent &
+          echo $! > http.pid
+
+      - name: Run Lighthouse and enforce thresholds
+        run: |
+          npx -y lighthouse http://127.0.0.1:8080 --output=json --output-html --output-path=./lighthouse-report.json --quiet || true
+          echo "Lighthouse report saved to lighthouse-report.json (JSON+HTML)"
+          PERF=$(jq '.categories.performance.score' lighthouse-report.json)
+          ACCESS=$(jq '.categories.accessibility.score' lighthouse-report.json)
+          echo "Performance: $PERF, Accessibility: $ACCESS"
+          MIN_PERF=0.80
+          MIN_ACCESS=0.90
+          PERF_OK=$(awk -v v="$PERF" -v t="$MIN_PERF" 'BEGIN{ if (v+0 >= t+0) print 1; else print 0 }')
+          ACCESS_OK=$(awk -v v="$ACCESS" -v t="$MIN_ACCESS" 'BEGIN{ if (v+0 >= t+0) print 1; else print 0 }')
+          if [ "$PERF_OK" -ne 1 ] || [ "$ACCESS_OK" -ne 1 ]; then
+            echo "Lighthouse thresholds not met (perf >= $MIN_PERF, access >= $MIN_ACCESS)"
+            cat lighthouse-report.json
+            exit 2
+          fi
+
+      - name: Generate badge and commit (if changed)
+        run: |
+          python3 tools/generate_lighthouse_badge.py lighthouse-report.json badges/lighthouse.svg
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add badges/lighthouse.svg
+          if ! git diff --cached --quiet; then
+            git commit -m "chore(ci): update lighthouse badge" || true
+            git push origin HEAD:main || true
+          else
+            echo "Badge unchanged"
+          fi
+
+      - name: Upload Lighthouse report
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-report
+          path: |
+            lighthouse-report.json
+            lighthouse-report.html
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f http.pid ]; then
+            kill $(cat http.pid) || true
+          fi
