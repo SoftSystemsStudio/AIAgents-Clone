@@ -1,6 +1,9 @@
 ---
 name: Deploy to Vercel
 
+permissions:
+  contents: read
+
 # Note: set the following repository secrets in GitHub:
 # - VERCEL_TOKEN (personal token)
 # - VERCEL_ORG_ID
@@ -13,6 +16,11 @@ on:
 jobs:
   vercel-deploy:
     runs-on: ubuntu-latest
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -21,12 +29,24 @@ jobs:
         run: |
           bash build.sh
 
+      - name: Validate required Vercel secrets
+        run: |
+          set -euo pipefail
+          for var in VERCEL_TOKEN VERCEL_ORG_ID VERCEL_PROJECT_ID; do
+            if [ -z "${!var:-}" ]; then
+              echo "Missing required secret: $var" >&2
+              exit 1
+            fi
+          done
+
       - name: Deploy to Vercel
         uses: amondnet/vercel-action@v25  # community action
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          zeit-token: ${{ env.VERCEL_TOKEN }}
+          vercel-token: ${{ env.VERCEL_TOKEN }}
+          github-token: ${{ env.GITHUB_TOKEN }}
           vercel-args: --prod
           working-directory: .
         env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_ORG_ID: ${{ env.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}

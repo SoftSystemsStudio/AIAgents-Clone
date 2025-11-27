@@ -1,6 +1,9 @@
 ---
 name: Site Smoke + A11y
 
+permissions:
+  contents: read
+
 on:
   push:
     branches: [main]
@@ -39,9 +42,11 @@ jobs:
 
       - name: Run accessibility scan (pa11y) and fail on errors
         run: |
+          set -euo pipefail
           # serve the built site and run pa11y (JSON reporter) against it
           npx http-server build -p 8080 --silent &
           PID=$!
+          trap "kill $PID || true" EXIT
           # wait for server to be available
           for i in {1..10}; do
             if curl -sSf http://127.0.0.1:8080 >/dev/null; then
@@ -57,8 +62,6 @@ jobs:
           if [ "$ERRORS" -gt 0 ]; then
             echo "Accessibility errors found (pa11y). Failing job."
             cat pa11y.json
-            kill $PID || true
             exit 1
           fi
           echo "No pa11y errors found."
-          kill $PID || true

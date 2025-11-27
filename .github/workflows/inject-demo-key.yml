@@ -1,6 +1,10 @@
 ---
 name: Build (inject DEMO_KEY)
 
+permissions:
+  contents: read
+  pull-requests: write
+
 on:
   push:
     branches: [main]
@@ -10,6 +14,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    env:
+      DEMO_KEY: ${{ secrets.DEMO_KEY }}
+      WEB3FORMS_ACCESS_KEY: ${{ secrets.WEB3FORMS_ACCESS_KEY }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -108,9 +117,13 @@ jobs:
       - name: Deploy preview to Vercel (Pull Request) and comment
         if: github.event_name == 'pull_request'
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN not provided; skipping preview deploy"
+            exit 0
+          fi
           echo "Installing Vercel CLI"
           npm install -g vercel@28 >/dev/null
           echo "Deploying preview to Vercel"
@@ -130,11 +143,21 @@ jobs:
           gh pr comment "$PR_NUMBER" --body "$BODY"
         shell: bash
 
+      - name: Validate Vercel token for production deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN is required for production deploy" >&2
+            exit 1
+          fi
+
       - name: Deploy to Vercel (Production)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: amondnet/vercel-action@v25
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          zeit-token: ${{ env.VERCEL_TOKEN }}
+          vercel-token: ${{ env.VERCEL_TOKEN }}
+          github-token: ${{ env.GITHUB_TOKEN }}
           vercel-args: '--prod'
           working-directory: ./build
