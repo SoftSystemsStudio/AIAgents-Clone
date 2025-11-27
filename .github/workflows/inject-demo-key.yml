@@ -113,7 +113,7 @@ jobs:
       - name: Deploy preview to Vercel (Pull Request) and comment
         if: github.event_name == 'pull_request'
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
         run: |
           set -euo pipefail
           echo "Installing Vercel CLI"
@@ -135,12 +135,21 @@ jobs:
           gh pr comment "$PR_NUMBER" --body "$BODY"
         shell: bash
 
+      - name: Validate Vercel token for production deploy
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          set -euo pipefail
+          if [ -z "${VERCEL_TOKEN:-}" ]; then
+            echo "VERCEL_TOKEN is required for production deploy" >&2
+            exit 1
+          fi
+
       - name: Deploy to Vercel (Production)
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: amondnet/vercel-action@v25
         with:
-          zeit-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          zeit-token: ${{ env.VERCEL_TOKEN }}
+          vercel-token: ${{ env.VERCEL_TOKEN }}
+          github-token: ${{ env.GITHUB_TOKEN }}
           vercel-args: '--prod'
           working-directory: ./build
