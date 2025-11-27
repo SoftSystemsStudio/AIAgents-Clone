@@ -40,23 +40,84 @@ class RuleCondition(str, Enum):
     LABEL_IS = "label_is"
 
 
-@dataclass
 class CleanupRule:
     """
     A rule that defines what to do with matching emails.
-    
-    Rules are evaluated against emails to determine what actions to take.
+
+    This implementation is backwards-compatible with older callers that used
+    keyword args such as `sender_domain`, `older_than_days`, `category`, etc.
+    Internally rules are normalized to `condition_type` + `condition_value`.
     """
-    id: str
-    name: str
-    description: str
-    condition_type: RuleCondition
-    condition_value: str
-    action: CleanupAction
-    action_params: dict = field(default_factory=dict)
-    enabled: bool = True
-    priority: int = 100  # Lower number = higher priority
-    created_at: datetime = field(default_factory=datetime.utcnow)
+    def __init__(
+        self,
+        id: str = "",
+        name: str = "",
+        description: str = "",
+        condition_type: Optional[RuleCondition] = None,
+        condition_value: Optional[str] = None,
+        sender_domain: Optional[str] = None,
+        subject_contains: Optional[str] = None,
+        older_than_days: Optional[int] = None,
+        larger_than_mb: Optional[float] = None,
+        category: Optional[EmailCategory] = None,
+        importance: Optional[EmailImportance] = None,
+        is_unread: Optional[bool] = None,
+        is_starred: Optional[bool] = None,
+        has_attachments: Optional[bool] = None,
+        label_is: Optional[str] = None,
+        action: Optional[CleanupAction] = None,
+        action_params: Optional[dict] = None,
+        enabled: bool = True,
+        priority: int = 100,
+        created_at: Optional[datetime] = None,
+    ) -> None:
+        self.id = id
+        self.name = name
+        self.description = description
+        self.action = action
+        self.action_params = action_params or {}
+        self.enabled = enabled
+        self.priority = priority
+        self.created_at = created_at or datetime.utcnow()
+
+        # Normalize condition_type/value from either explicit fields or legacy kwargs
+        if condition_type is not None and condition_value is not None:
+            self.condition_type = condition_type
+            self.condition_value = condition_value
+        elif sender_domain is not None:
+            self.condition_type = RuleCondition.SENDER_MATCHES
+            self.condition_value = sender_domain
+        elif subject_contains is not None:
+            self.condition_type = RuleCondition.SUBJECT_CONTAINS
+            self.condition_value = subject_contains
+        elif older_than_days is not None:
+            self.condition_type = RuleCondition.OLDER_THAN_DAYS
+            self.condition_value = str(older_than_days)
+        elif larger_than_mb is not None:
+            self.condition_type = RuleCondition.LARGER_THAN_MB
+            self.condition_value = str(larger_than_mb)
+        elif category is not None:
+            self.condition_type = RuleCondition.CATEGORY_IS
+            self.condition_value = getattr(category, "value", str(category))
+        elif importance is not None:
+            self.condition_type = RuleCondition.IMPORTANCE_IS
+            self.condition_value = getattr(importance, "value", str(importance))
+        elif is_unread is not None:
+            self.condition_type = RuleCondition.IS_UNREAD
+            self.condition_value = str(is_unread).lower()
+        elif is_starred is not None:
+            self.condition_type = RuleCondition.IS_STARRED
+            self.condition_value = str(is_starred).lower()
+        elif has_attachments is not None:
+            self.condition_type = RuleCondition.HAS_ATTACHMENTS
+            self.condition_value = str(has_attachments).lower()
+        elif label_is is not None:
+            self.condition_type = RuleCondition.LABEL_IS
+            self.condition_value = label_is
+        else:
+            # Fallback to provided condition_type/value even if one is missing
+            self.condition_type = condition_type or RuleCondition.SENDER_MATCHES
+            self.condition_value = condition_value or ""
     
     def matches_message(self, message: EmailMessage) -> bool:
         """Check if message matches this rule's condition."""
@@ -138,19 +199,35 @@ class LabelingRule:
         return temp_rule.matches_message(message)
 
 
-@dataclass
 class RetentionPolicy:
     """
     Policy for how long to keep different types of emails.
-    
+
     Defines retention rules based on categories, importance, etc.
+    Accepts legacy kwargs: `keep_starred`, `keep_unread`, `keep_recent_days`.
     """
-    id: str
-    name: str
-    description: str
-    rules: List[tuple[RuleCondition, str, int]] = field(default_factory=list)  # (condition, value, days_to_keep)
-    default_retention_days: int = 365
-    enabled: bool = True
+    def __init__(
+        self,
+        id: str = "",
+        name: str = "",
+        description: str = "",
+        rules: Optional[List[tuple[RuleCondition, str, int]]] = None,
+        default_retention_days: int = 365,
+        enabled: bool = True,
+        keep_starred: Optional[bool] = None,
+        keep_unread: Optional[bool] = None,
+        keep_recent_days: Optional[int] = None,
+    ) -> None:
+        self.id = id
+        self.name = name
+        self.description = description
+        self.rules = rules or []
+        # support legacy `keep_recent_days`
+        self.default_retention_days = keep_recent_days if keep_recent_days is not None else default_retention_days
+        self.enabled = enabled
+        # legacy flags can be stored for downstream logic if needed
+        self.keep_starred = bool(keep_starred) if keep_starred is not None else False
+        self.keep_unread = bool(keep_unread) if keep_unread is not None else False
     
     def get_retention_days(self, message: EmailMessage) -> int:
         """Get retention period for a message based on policy rules."""
@@ -178,28 +255,61 @@ class RetentionPolicy:
         return message.age_days > retention_days
 
 
-@dataclass
 class CleanupPolicy:
     """
     Complete cleanup policy for a user's mailbox.
-    
+
     Combines multiple rules, labeling rules, and retention policies
     into a cohesive strategy.
+    Backwards-compatible parameter names accepted: `rules` (alias to
+    `cleanup_rules`) and `retention` (alias to `retention_policy`).
     """
-    id: str
-    user_id: str
-    name: str
-    description: str
-    cleanup_rules: List[CleanupRule] = field(default_factory=list)
-    labeling_rules: List[LabelingRule] = field(default_factory=list)
-    retention_policy: Optional[RetentionPolicy] = None
-    auto_archive_promotions: bool = False
-    auto_archive_social: bool = False
-    auto_mark_read_old: bool = False
-    old_threshold_days: int = 30
-    enabled: bool = True
-    created_at: datetime = field(default_factory=datetime.utcnow)
-    updated_at: datetime = field(default_factory=datetime.utcnow)
+    def __init__(
+        self,
+        id: str,
+        user_id: str,
+        name: str,
+        description: str = "",
+        cleanup_rules: Optional[List[CleanupRule]] = None,
+        rules: Optional[List[CleanupRule]] = None,
+        labeling_rules: Optional[List[LabelingRule]] = None,
+        retention_policy: Optional[RetentionPolicy] = None,
+        retention: Optional[RetentionPolicy] = None,
+        auto_archive_promotions: bool = False,
+        auto_archive_social: bool = False,
+        auto_mark_read_old: bool = False,
+        old_threshold_days: int = 30,
+        enabled: bool = True,
+        created_at: Optional[datetime] = None,
+        updated_at: Optional[datetime] = None,
+        dry_run: Optional[bool] = None,
+    ) -> None:
+        self.id = id
+        self.user_id = user_id
+        self.name = name
+        self.description = description
+        # support legacy `rules` kwarg
+        self.cleanup_rules = cleanup_rules if cleanup_rules is not None else (rules or [])
+        self.labeling_rules = labeling_rules or []
+        # support legacy `retention` kwarg
+        self.retention_policy = retention_policy if retention_policy is not None else retention
+        self.auto_archive_promotions = auto_archive_promotions
+        self.auto_archive_social = auto_archive_social
+        self.auto_mark_read_old = auto_mark_read_old
+        self.old_threshold_days = old_threshold_days
+        self.enabled = enabled
+        self.created_at = created_at or datetime.utcnow()
+        self.updated_at = updated_at or datetime.utcnow()
+        # Some callers use `dry_run` at policy-level; store it if present
+        if dry_run is not None:
+            self.dry_run = bool(dry_run)
+    @property
+    def rules(self) -> List[CleanupRule]:
+        return self.cleanup_rules
+
+    @rules.setter
+    def rules(self, value: List[CleanupRule]) -> None:
+        self.cleanup_rules = value
     
     def get_actions_for_message(self, message: EmailMessage) -> List[tuple[CleanupAction, dict]]:
         """

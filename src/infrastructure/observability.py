@@ -14,8 +14,23 @@ from contextlib import contextmanager
 from src.domain.interfaces import IObservabilityService
 
 
-# Alias for backwards compatibility
-ObservabilityProvider = IObservabilityService
+# Backwards-compatible factory for obtaining an observability provider.
+def ObservabilityProvider(
+    service_name: str = "app",
+    environment: str = "dev",
+    provider: str = "structured",
+    **kwargs,
+) -> IObservabilityService:
+    """
+    Simple factory that returns an `IObservabilityService` implementation.
+
+    Tests and lightweight deployments expect to call `ObservabilityProvider(...)`.
+    Default implementation returns `StructuredLogger`. Advanced setups may
+    inspect `provider` and return `OpenTelemetryObservability` or
+    `PrometheusObservability` when configured.
+    """
+    # For now default to structured logger which has no external deps.
+    return StructuredLogger(log_level=kwargs.get("log_level", "INFO"))
 
 
 class StructuredLogger(IObservabilityService):

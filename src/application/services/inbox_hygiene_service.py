@@ -35,6 +35,7 @@ class InboxHygieneService:
         gmail_client: GmailClient,
         repository: Optional[GmailCleanupRepository] = None,
         observability: Optional[GmailCleanupObservability] = None,
+        llm_provider: Optional[object] = None,
     ):
         """
         Initialize service with Gmail client.
@@ -47,6 +48,7 @@ class InboxHygieneService:
         self.gmail = gmail_client
         self.repository = repository
         self.observability = observability
+        self.llm_provider = llm_provider
         
         # Initialize use cases with optional dependencies
         # TODO: Create these use cases in src/application/use_cases/gmail_cleanup.py

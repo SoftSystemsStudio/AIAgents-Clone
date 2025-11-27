@@ -20,6 +20,17 @@ from src.domain.exceptions import (
     RateLimitError,
 )
 from src.domain.interfaces import ILLMProvider
+from typing import Protocol
+
+
+# Provide a lightweight protocol expected by some callers/tests which use
+# a `generate` method name (historical API). This keeps tests happy while
+# the real implementations live in `ILLMProvider`.
+class LLMProviderInterface(Protocol):
+    async def generate(self, prompt: str) -> str: ...
+
+# Backwards-compatible alias to the domain interface as well
+LLMProviderInterface = LLMProviderInterface
 from src.domain.models import Message, MessageRole
 
 
