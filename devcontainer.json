@@ -1,0 +1,29 @@
+{
+  "name": "AIAgents Dev",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+
+  // Mount the repo at /workspaces/AIAgents (Codespaces default)
+  "workspaceFolder": "/workspaces/AIAgents",
+
+  // Basic extensions you’ll want in the Codespace UI
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.testing.pytestEnabled": true,
+        "python.testing.unittestEnabled": false
+      }
+    }
+  },
+
+  // Run your standard dev bootstrap once the container is built
+  "postCreateCommand": "make install-dev || pip install -e .",
+
+  // Use the default non-root user for devcontainers
+  "remoteUser": "vscode"
+}
