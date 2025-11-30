@@ -1,0 +1,54 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Client {
+  id                 String             @id @default(uuid())
+  name               String
+  website            String?
+  industry           String?
+  size               String?
+  businessModel      String?
+  primaryContactName String?
+  primaryContactEmail String?
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+  intakeSubmissions  IntakeSubmission[]
+  clientConfigs      ClientConfig[]
+  generatedDocuments GeneratedDocument[]
+}
+
+model IntakeSubmission {
+  id        String   @id @default(uuid())
+  client    Client?  @relation(fields: [clientId], references: [id])
+  clientId  String?
+  raw       Json
+  sourceUrl String?
+  status    String   @default("new")
+  submittedAt DateTime @default(now())
+}
+
+model ClientConfig {
+  id                     String   @id @default(uuid())
+  client                 Client   @relation(fields: [clientId], references: [id])
+  clientId               String
+  config                 Json
+  version                Int      @default(1)
+  derivedFromSubmissionId String?
+  normalizedAt           DateTime @default(now())
+}
+
+model GeneratedDocument {
+  id        String   @id @default(uuid())
+  client    Client   @relation(fields: [clientId], references: [id])
+  clientId  String
+  type      String
+  content   String   @db.Text
+  meta      Json?
+  createdAt DateTime @default(now())
+}
