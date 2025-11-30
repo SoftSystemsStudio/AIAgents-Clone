@@ -1,6 +1,8 @@
 {
-  "buildCommand": "bash build.sh",
-  "outputDirectory": "build",
+  "buildCommand": "cd apps/agency-web && npm run build",
   "cleanUrls": true,
-  "trailingSlash": false
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/(.*)", "destination": "/" }
+  ]
 }
