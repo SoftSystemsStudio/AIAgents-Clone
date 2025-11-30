@@ -1,0 +1,11 @@
+{
+  "name": "aiagents-clone-root",
+  "private": true,
+  "scripts": {
+    "dev:web": "cd apps/agency-web && npm run dev",
+    "build:web": "cd apps/agency-web && npm run build",
+    "start:web": "cd apps/agency-web && npm run start",
+    "lint": "echo 'no lint configured'",
+    "bootstrap": "echo 'Bootstrap step - install deps in subprojects'"
+  }
+}
